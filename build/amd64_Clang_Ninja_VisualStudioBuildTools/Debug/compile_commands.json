@@ -1,0 +1,8 @@
+[
+{
+  "directory": "E:/workSpace/ghq-repo/main/github.com/Eigen/maboroutu/build/amd64_Clang_Ninja_VisualStudioBuildTools/Debug",
+  "command": "F:\\develop_tools\\Visual_Studio\\IDE\\2022\\BuildTools\\VC\\Tools\\Llvm\\x64\\bin\\clang++.exe -Dmaboroutu_PRIVATE -Dmaboroutu_PUBLIC -IE:/workSpace/ghq-repo/main/github.com/Eigen/maboroutu/include -O0 -std=c++23 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -o CMakeFiles\\maboroutu.dir\\src\\maboroutu.cpp.obj -c E:\\workSpace\\ghq-repo\\main\\github.com\\Eigen\\maboroutu\\src\\maboroutu.cpp",
+  "file": "E:\\workSpace\\ghq-repo\\main\\github.com\\Eigen\\maboroutu\\src\\maboroutu.cpp",
+  "output": "CMakeFiles\\maboroutu.dir\\src\\maboroutu.cpp.obj"
+}
+]
