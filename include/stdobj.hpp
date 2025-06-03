@@ -1,5 +1,6 @@
 #pragma once
 
+#include "uniqueFileInterface.hpp"
 #include <corecrt.h>
 #include <cstdarg>
 #include <cstdio>
@@ -9,7 +10,11 @@ namespace maboroutu {
 namespace wrap {
 // cstdioなのでSTLであるが、namespaceがstdではないため
 // wrapのグローバルで記述します。
-class UniqueFile {
+class UniqueFile : private UniqueFileSeekInterface,
+                   private UniqueFileInputInterface,
+                   private UniqueFileOutputInterface,
+                   private UniqueFileTextInputInterface,
+                   private UniqueFileTextOutputInterface {
 private:
   struct Deletor {
     void operator()(FILE *Val) { ::fclose(Val); }
@@ -49,6 +54,23 @@ public:
   // perror 	システムエラーメッセージを出力する
   */
 private:
+  int i_fgetpos(fpos_t *Pos) override { return fgetpos(Pos); }
+  int i_fseek(long Offset, OffsetFlag OffsetFlag) override {
+    return fseek(Offset, OffsetFlag);
+  }
+  size_t i_fread(void *Ptr, size_t TypeSize, size_t Size) override {
+    return fread(Ptr, TypeSize, Size);
+  }
+  size_t i_fwrite(const void *Ptr, size_t TypeSize, size_t Size) override {
+    return fwrite(Ptr, TypeSize, Size);
+  }
+  int i_vfscanf(const char *Format, va_list Arg) override {
+    return vfscanf(Format, Arg);
+  }
+  int i_vfprintf(const char *Format, ::va_list Arg) override {
+    return vfprintf(Format, Arg);
+  }
+
 protected:
   FILE_pointer Continer;
 
@@ -153,10 +175,10 @@ public:
     return ::fread(Ptr, TypeSize, Size, Continer.get());
   }
   /**
-   * @brief [::std::fread wrap.]
+   * @brief [::std::fwrite wrap.]
    *
-   * @param Ptr [(ptr)dst value]
-   * @param TypeSize [(size)dst type size.(exp 'Ptr = &uint16_t' when TypeSize =
+   * @param Ptr [(ptr)src value]
+   * @param TypeSize [(size)src type size.(exp 'Ptr = &uint16_t' when TypeSize =
    * sizeof(uint16_t).)]
    * @param Size [(nmemb)Array size.]
    * @return [TODO:return]
@@ -168,9 +190,12 @@ public:
   int constexpr fgetpos(fpos_t *Pos) noexcept {
     return ::fgetpos(Continer.get(), Pos);
   }
-  int constexpr fseek(long Offset, int Whence) noexcept {
-    return ::fseek(Continer.get(), Offset, Whence);
+
+  using OffsetFlag = UniqueFileSeekInterface::OffsetFlag;
+  int constexpr fseek(long Offset, OffsetFlag OffsetFlag) noexcept {
+    return ::fseek(Continer.get(), Offset, (int)OffsetFlag);
   }
+
   int constexpr fsetpos(const fpos_t *Pos) noexcept {
     return ::fsetpos(Continer.get(), Pos);
   }
