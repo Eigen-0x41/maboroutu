@@ -5,6 +5,7 @@
 #include "./exbit.hpp"
 #include "./exexpected.hpp"
 #include "./exmemory.hpp"
-#include "./indexKeyMap.hpp"
+#include "./inplaceSlotMap.hpp"
+#include "./slotMap.hpp"
 #include "./stdobj.hpp"
 #include "./unique_timer.hpp"

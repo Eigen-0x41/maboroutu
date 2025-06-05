@@ -4,7 +4,7 @@
 #include "maboroutu.hpp"
 
 int main(int argc, char *argv[]) {
-  maboroutu::UnorderdIndexKeyMap<int> Test;
+  maboroutu::InplaceSlotMap<int, 5> Test;
 
   auto I1 = Test.emplace(0);
   auto I2 = Test.emplace(1);

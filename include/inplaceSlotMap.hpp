@@ -1,0 +1,105 @@
+#pragma once
+
+#include "ExceptionHelper.hpp"
+#include "listNode.hpp"
+
+#include <array>
+#include <concepts>
+#include <stdexcept>
+#include <variant>
+
+namespace maboroutu {
+/**
+ * @brief
+ * 要素を自然数と0の範囲で索引付けして格納します。
+ * 要素の挿入、削除、索引検索は全てO(1)で完了します。
+ *
+ * @tparam T [TODO:tparam]
+ * @param Index [TODO:parameter]
+ * @return [TODO:return]
+ */
+template <class T, size_t Capacity, std::integral IndexT = size_t>
+class InplaceSlotMap {
+public:
+  using this_type = InplaceSlotMap<T, Capacity, IndexT>;
+
+  using key_type = IndexT;
+  using mapped_type = T;
+
+  using freeNodeList_type = ListNode<this_type, IndexT>;
+  using value_type = std::variant<char, mapped_type, freeNodeList_type>;
+
+  static constexpr key_type MasterIndex = 0;
+
+private:
+  friend freeNodeList_type;
+
+  std::array<value_type, Capacity> Continer;
+
+  freeNodeList_type FreeNodeSentinel;
+
+  freeNodeList_type &atValue(key_type Index) { return Continer.at(Index); }
+
+public:
+  InplaceSlotMap() : Continer({}), FreeNodeSentinel(this) {
+    for (auto I = 0; I < Capacity; I++) {
+      FreeNodeSentinel.insertHelper(Continer[I], I, I);
+    }
+  }
+  InplaceSlotMap(this_type const &Value) = delete;
+  InplaceSlotMap(this_type &&Value) = default;
+
+  InplaceSlotMap(std::initializer_list<value_type> Value)
+      : Continer(Value), FreeNodeSentinel(this) {
+    static_assert(Value.size() > Capacity,
+                  "initializer_list size is bigger than Capacity");
+    auto I = 0;
+    for (; I < Value.size(); I++) {
+      Continer[I] = Value;
+    }
+    for (; I < Continer.size(); I++) {
+    }
+    FreeNodeSentinel.insertHelper(Continer[I], I, I);
+  }
+
+  template <class... ArgsT> key_type emplace(ArgsT &&...Args) {
+    auto &FreeIndex = FreeNodeSentinel.getForward();
+    if (FreeNodeSentinel == FreeIndex) [[unlikely]] {
+      throw std::out_of_range(
+          maboroutu::exceptionMessageCreater(this, "emplace", ""));
+    }
+    // deletorでリンク解除。
+    key_type AllocIndex = FreeIndex.value();
+    Continer.at(AllocIndex)
+        .template emplace<mapped_type>(std::forward<ArgsT>(Args)...);
+    return AllocIndex;
+  }
+
+  void erase(key_type Index) {
+    if (std::holds_alternative<freeNodeList_type>(Continer.at(Index)))
+      return;
+    FreeNodeSentinel.insertHelper(Continer[Index], Index, Index);
+  }
+
+  /**
+   * @brief
+   * 要素を取得する。
+   * もし要素が型TでなければruntimeErrorを排出する。
+   *
+   * @param Index [TODO:parameter]
+   * @return [TODO:return]
+   */
+  mapped_type &at(key_type Index) {
+    if (auto &RetValue = Continer.at(Index);
+        std::holds_alternative<mapped_type>(RetValue)) [[likely]] {
+      return std::get<mapped_type>(RetValue);
+    }
+    throw std::runtime_error(maboroutu::exceptionMessageCreater(
+        this, "at", "Select index is not type template<T>!!"));
+  }
+  mapped_type &operator[](key_type Index) noexcept {
+    return std::get<mapped_type>(Continer.at(Index));
+  }
+};
+
+} // namespace maboroutu
