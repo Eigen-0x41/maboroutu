@@ -25,20 +25,20 @@ public:
 
   using key_type = IndexT;
   using mapped_type = T;
+  using unmapped_type = ListNode<this_type, IndexT>;
 
-  using freeNodeList_type = ListNode<this_type, IndexT>;
-  using value_type = std::variant<mapped_type, freeNodeList_type>;
+  using value_type = std::variant<mapped_type, unmapped_type>;
 
   static constexpr key_type MasterIndex = 0;
 
 private:
-  friend freeNodeList_type;
+  friend unmapped_type;
 
   std::vector<value_type> Continer;
 
-  freeNodeList_type FreeNodeSentinel;
+  unmapped_type FreeNodeSentinel;
 
-  freeNodeList_type &atValue(key_type Index) { return Continer.at(Index); }
+  unmapped_type &atValue(key_type Index) { return Continer.at(Index); }
 
 public:
   SlotMap() : Continer({}), FreeNodeSentinel(this) {}
@@ -64,9 +64,14 @@ public:
   }
 
   void erase(key_type Index) {
-    if (std::holds_alternative<freeNodeList_type>(Continer.at(Index)))
+    auto &EraseNode = Continer.at(Index);
+    if (std::holds_alternative<unmapped_type>(EraseNode))
       return;
-    FreeNodeSentinel.insertHelper(Continer[Index], Index, Index);
+    FreeNodeSentinel.insertHelper(EraseNode, Index, Index);
+  }
+
+  bool contains(key_type Index) const {
+    return std::holds_alternative<mapped_type>(Continer.at(Index));
   }
 
   /**
@@ -86,7 +91,7 @@ public:
         this, "at", "Select index is not type template<T>!!"));
   }
   mapped_type &operator[](key_type Index) noexcept {
-    return std::get<mapped_type>(Continer.at(Index));
+    return std::get<mapped_type>(Continer[Index]);
   }
 };
 } // namespace maboroutu
