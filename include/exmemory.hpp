@@ -113,7 +113,7 @@ restruct_unique(std::unique_ptr<T, Deleter> &&UniquePtr, ArgsT &&...Args) {
 
 namespace maboroutu {
 namespace {
-template <std::integral T, T V, T X, T Current, bool, bool>
+template <std::integral T, T V, T X, T Current, bool Status, bool IsSentinel>
 struct IsPowXyBase : public std::false_type {
   static const size_t isLEThan = Current;
 };
