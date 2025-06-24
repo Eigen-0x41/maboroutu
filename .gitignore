@@ -1,11 +1,16 @@
-*
-*/*
-!.gitignore
+# .gitignore
 
-!include
-!include/*
-!src
-!src/*
+# whitelist mode
 
-!CMakeLists.txt
-!LICENSE
+/*
+!/.gitignore
+!/.gitmodules
+
+#-allow list
+!/include/
+!/include/*
+!/src/
+!/src/*
+
+!/CMakeLists.txt
+!/LICENSE
