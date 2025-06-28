@@ -1,9 +1,7 @@
 #pragma once
 
-#include <exception>
 #include <expected>
 #include <string>
-
 namespace maboroutu {
 template <class T>
 using expected = typename std::expected<T, typename std::string>;

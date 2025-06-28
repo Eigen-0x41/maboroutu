@@ -1,9 +1,7 @@
 #pragma once
 
 #include <concepts>
-#include <cstddef>
 namespace maboroutu {
-
 template <class T>
 concept IsIndexedTreeNodeContainer = requires(T &V) {
   T::key_type;

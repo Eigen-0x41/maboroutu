@@ -1,9 +1,7 @@
 #pragma once
 
 #include <algorithm>
-
 namespace maboroutu {
-
 template <class T>
 static inline void nativeByteReader(void const *Src, T *Dst,
                                     size_t const DstSize = 1) {

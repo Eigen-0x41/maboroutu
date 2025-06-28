@@ -1,20 +1,15 @@
 #pragma once
 
-#include "uniqueFileInterface.hpp"
+// 直接の依存ではありませんが仕様を満たすために必要です
+#include "streamConcepts.hpp"
 #include <corecrt.h>
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
-
 namespace maboroutu {
-namespace wrap {
 // cstdioなのでSTLであるが、namespaceがstdではないため
 // wrapのグローバルで記述します。
-class UniqueFile : private UniqueFileSeekInterface,
-                   private UniqueFileInputInterface,
-                   private UniqueFileOutputInterface,
-                   private UniqueFileTextInputInterface,
-                   private UniqueFileTextOutputInterface {
+class UniqueFile {
 private:
   struct Deletor {
     void operator()(FILE *Val) { ::fclose(Val); }
@@ -22,6 +17,16 @@ private:
 
 public:
   using FILE_pointer = typename ::std::unique_ptr<::FILE, Deletor>;
+
+  enum class OffsetFlag : decltype(SEEK_SET) {
+    SeekSet = SEEK_SET,
+    SeekCur = SEEK_CUR,
+    SeekEnd = SEEK_END,
+
+    Begin = SeekSet,
+    Current = SeekCur,
+    End = SeekEnd,
+  };
 
   /*
   // remove 	ファイルを削除する
@@ -54,23 +59,6 @@ public:
   // perror 	システムエラーメッセージを出力する
   */
 private:
-  int i_fgetpos(fpos_t *Pos) override { return fgetpos(Pos); }
-  int i_fseek(long Offset, OffsetFlag OffsetFlag) override {
-    return fseek(Offset, OffsetFlag);
-  }
-  size_t i_fread(void *Ptr, size_t TypeSize, size_t Size) override {
-    return fread(Ptr, TypeSize, Size);
-  }
-  size_t i_fwrite(const void *Ptr, size_t TypeSize, size_t Size) override {
-    return fwrite(Ptr, TypeSize, Size);
-  }
-  int i_vfscanf(const char *Format, va_list Arg) override {
-    return vfscanf(Format, Arg);
-  }
-  int i_vfprintf(const char *Format, ::va_list Arg) override {
-    return vfprintf(Format, Arg);
-  }
-
 protected:
   FILE_pointer Continer;
 
@@ -191,7 +179,6 @@ public:
     return ::fgetpos(Continer.get(), Pos);
   }
 
-  using OffsetFlag = UniqueFileSeekInterface::OffsetFlag;
   int constexpr fseek(long Offset, OffsetFlag OffsetFlag) noexcept {
     return ::fseek(Continer.get(), Offset, (int)OffsetFlag);
   }
@@ -213,5 +200,4 @@ public:
   // operator
   explicit operator bool() const noexcept { return Continer.get() != nullptr; }
 };
-} // namespace wrap
 } // namespace maboroutu

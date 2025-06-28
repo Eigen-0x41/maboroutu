@@ -6,7 +6,6 @@
 #include <memory>
 #include <new>
 #include <type_traits>
-
 namespace maboroutu {
 struct free_delete {
   void operator()(void *Ptr) { free(Ptr); }

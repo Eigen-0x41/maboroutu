@@ -2,12 +2,10 @@
 
 #include "exceptionHelper.hpp"
 #include "listNode.hpp"
-
 #include <array>
 #include <concepts>
 #include <stdexcept>
 #include <variant>
-
 namespace maboroutu {
 /**
  * @brief

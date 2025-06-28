@@ -2,14 +2,11 @@
 
 #include "exceptionHelper.hpp"
 #include "listNode.hpp"
-
 #include <concepts>
 #include <stdexcept>
 #include <variant>
 #include <vector>
-
 namespace maboroutu {
-
 /**
  * @brief
  * 要素を自然数と0の範囲で索引付けして格納します。

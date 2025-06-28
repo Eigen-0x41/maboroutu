@@ -2,9 +2,7 @@
 
 #include <limits>
 #include <variant>
-
 namespace maboroutu {
-
 /**
  * @brief
  * 実体を直接持つLinkList。

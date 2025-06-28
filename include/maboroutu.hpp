@@ -8,5 +8,5 @@
 #include "./maboroutu/indexedTreeNode.hpp"
 #include "./maboroutu/inplaceSlotMap.hpp"
 #include "./maboroutu/slotMap.hpp"
-#include "./maboroutu/stdobj.hpp"
+#include "./maboroutu/uniqueFile.hpp"
 #include "./maboroutu/unique_timer.hpp"
