@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ExceptionHelper.hpp"
+#include "exceptionHelper.hpp"
 #include "listNode.hpp"
 
 #include <array>
