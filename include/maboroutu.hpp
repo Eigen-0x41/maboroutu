@@ -5,6 +5,7 @@
 #include "./maboroutu/exceptionHelper.hpp"
 #include "./maboroutu/exexpected.hpp"
 #include "./maboroutu/exmemory.hpp"
+#include "./maboroutu/indexedTreeNode.hpp"
 #include "./maboroutu/inplaceSlotMap.hpp"
 #include "./maboroutu/slotMap.hpp"
 #include "./maboroutu/stdobj.hpp"
