@@ -1,6 +1,7 @@
 #pragma once
 
 #include "./maboroutu/algorithm.hpp"
+#include "./maboroutu/bitAccess.hpp"
 #include "./maboroutu/exbit.hpp"
 #include "./maboroutu/exceptionHelper.hpp"
 #include "./maboroutu/exexpected.hpp"
