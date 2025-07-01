@@ -10,5 +10,6 @@ concept IOConcepts = requires(T &IO, ValueT Value) {
   requires std::is_constructible_v<T, binary &, size_t>;
   { Value = IO };
   { IO = Value };
+  { IO.operator bool() };
 };
 } // namespace maboroutu
