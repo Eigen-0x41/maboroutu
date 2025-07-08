@@ -9,6 +9,7 @@
 #include "./maboroutu/indexedTreeNode.hpp"
 #include "./maboroutu/inplaceSlotMap.hpp"
 #include "./maboroutu/ioConcepts.hpp"
+#include "./maboroutu/slashPath.hpp"
 #include "./maboroutu/slotMap.hpp"
 #include "./maboroutu/uniqueFile.hpp"
 #include "./maboroutu/unique_timer.hpp"
