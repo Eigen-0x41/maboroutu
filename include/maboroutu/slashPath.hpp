@@ -229,15 +229,6 @@ public:
   ~BasicSlashPath() = default;
   this_type &operator=(this_type const &) = default;
 
-  template <SlashPathTraitsConcepts LocTraitsT>
-  bool operator==(BasicSlashPath<LocTraitsT> const &Right) {
-    return compare(Right);
-  }
-  template <SlashPathTraitsConcepts LocTraitsT>
-  std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Right) {
-    return compare(Right) <=> 0;
-  }
-
   iterator begin() { return iterator(Path, 0); }
   iterator beginOrRootChild() {
     return (hasRootDirectory()) ? ++begin() : begin();
@@ -255,8 +246,6 @@ public:
     return begin() == endOrDirectoryLast();
   }
 
-  int compare(string_type const &S) const { return compare(this_type(S)); }
-  int compare(string_view_type Sv) const { return compare(this_type(Sv)); }
   template <SlashPathTraitsConcepts LocTraitsT>
   int compare(BasicSlashPath<LocTraitsT> const &Path) const {
     int Count = 0;
@@ -275,22 +264,16 @@ public:
   string_type const &getString() const noexcept { return Path; }
 
   string_type const &detach() noexcept {
-    static_assert(!trait_type::IsStringTypeView, "This type is View!!");
-
     Path.resize(Path.rfind(PreferredSeparator));
     return Path;
   }
   string_type const &detach(size_t const Size) noexcept {
-    static_assert(!trait_type::IsStringTypeView, "This type is View!!");
-
     for (auto const I : std::views::repeat(0, Size)) {
       Path.resize(Path.rfind(PreferredSeparator));
     }
     return Path;
   }
   string_type const &append(string_view_type Sv) noexcept {
-    static_assert(!trait_type::IsStringTypeView, "This type is View!!");
-
     Path += PreferredSeparator;
     Path += Sv;
     return Path;
@@ -299,8 +282,6 @@ public:
     return append(Sv);
   }
   string_type const &assign(string_view_type Sv) noexcept {
-    static_assert(!trait_type::IsStringTypeView, "This type is View!!");
-
     Path += Sv;
     return Path;
   }
@@ -308,10 +289,40 @@ public:
     return assign(Sv);
   }
 };
+template <SlashPathTraitsConcepts LocTraitsT>
+bool operator==(BasicSlashPath<LocTraitsT> const &Left,
+                BasicSlashPath<LocTraitsT> const &Right) {
+  return Left.compare(Right) == 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+bool operator==(BasicSlashPath<LocTraitsT> const &Left,
+                typename LocTraitsT::string_view_type Right) {
+  return Left.compare(Right) == 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+bool operator==(typename LocTraitsT::string_view_type Left,
+                BasicSlashPath<LocTraitsT> const &Right) {
+  return Left.compare(Right) == 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Left,
+                                 BasicSlashPath<LocTraitsT> const &Right) {
+  return Left.compare(Right) <=> 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Left,
+                                 typename LocTraitsT::string_view_type Right) {
+  return Left.compare(Right) <=> 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+std::strong_ordering operator<=>(typename LocTraitsT::string_view_type Left,
+                                 BasicSlashPath<LocTraitsT> const &Right) {
+  return BasicSlashPath<LocTraitsT>(Left).compare(Right) <=> 0;
+}
 
 template <SlashPathTraitsConcepts TraitsT> class BasicSlashPathView {
 public:
-  using this_type = BasicSlashPath<TraitsT>;
+  using this_type = BasicSlashPathView<TraitsT>;
   using trait_type = TraitsT;
 
   using string_view_type = typename trait_type::string_view_type;
@@ -329,25 +340,12 @@ public:
   BasicSlashPathView(this_type const &Path) = default;
   BasicSlashPathView(this_type &&Path) = default;
   template <SlashPathTraitsConcepts LocTraitsT>
-  BasicSlashPathView(BasicSlashPath<LocTraitsT> &Path)
+  BasicSlashPathView(BasicSlashPathView<LocTraitsT> &Path)
       : Path(Path.getString()) {}
   template <class... ArgsT>
   BasicSlashPathView(ArgsT &&...Args) : Path(std::forward<ArgsT>(Args)...) {}
   ~BasicSlashPathView() = default;
   this_type &operator=(this_type const &) = default;
-
-  template <SlashPathTraitsConcepts LocTraitsT>
-  bool operator==(BasicSlashPath<LocTraitsT> const &Right) {
-    return compare(Right);
-  }
-  template <SlashPathTraitsConcepts LocTraitsT>
-  bool operator==(BasicSlashPathView<LocTraitsT> const &Right) {
-    return compare(Right);
-  }
-  template <SlashPathTraitsConcepts LocTraitsT>
-  std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Right) {
-    return compare(Right) <=> 0;
-  }
 
   iterator begin() { return iterator(Path, 0); }
   iterator beginOrRootChild() {
@@ -368,7 +366,7 @@ public:
 
   int compare(string_view_type Sv) const { return compare(this_type(Sv)); }
   template <SlashPathTraitsConcepts LocTraitsT>
-  int compare(BasicSlashPath<LocTraitsT> const &Path) const {
+  int compare(BasicSlashPathView<LocTraitsT> const Path) const {
     int Count = 0;
     for (auto const &&[IT, IL] : std::views::zip(*this, Path)) {
       auto Condition = IT <=> IL;
@@ -382,8 +380,19 @@ public:
     }
     return 0;
   }
-  string_view_type const getString() const noexcept { return Path; }
+  string_view_type const getStringView() const noexcept { return Path; }
 };
+
+template <SlashPathTraitsConcepts LocTraitsT>
+bool operator==(BasicSlashPathView<LocTraitsT> const Left,
+                BasicSlashPathView<LocTraitsT> const Right) {
+  return Left.compare(Right) == 0;
+}
+template <SlashPathTraitsConcepts LocTraitsT>
+std::strong_ordering operator<=>(BasicSlashPathView<LocTraitsT> const Left,
+                                 BasicSlashPathView<LocTraitsT> const Right) {
+  return Left.compare(Right) <=> 0;
+}
 
 template <class CharT, class TraitsT = typename std::char_traits<CharT>,
           class Allocator = typename std::allocator<CharT>>
