@@ -367,5 +367,10 @@ struct hash<maboroutu::BasicSlashPath<T>> {
     return std::hash<typename maboroutu::BasicSlashPath<T>::string_view_type>{}(
         PathView.getString());
   }
+  size_t operator()(
+      typename maboroutu::BasicSlashPath<T>::string_view_type StrPath) const {
+    return std::hash<typename maboroutu::BasicSlashPath<T>::string_view_type>{}(
+        StrPath);
+  }
 };
 } // namespace std
