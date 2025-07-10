@@ -10,13 +10,13 @@
 #include <utility>
 namespace maboroutu {
 template <class T>
-concept SlashPathStringConcept = requires(T &Ins) {
+concept SlashPathTraitsConcepts = requires(T &Ins) {
   typename T::string_type;
   typename T::string_view_type;
 };
 
 namespace {
-template <class T, SlashPathStringConcept TraitsT> class SlashPathIterator {
+template <class T, SlashPathTraitsConcepts TraitsT> class SlashPathIterator {
 public:
   using this_type = SlashPathIterator<T, TraitsT>;
 
@@ -202,7 +202,7 @@ public:
 };
 } // namespace
 
-template <SlashPathStringConcept TraitsT> class BasicSlashPath {
+template <SlashPathTraitsConcepts TraitsT> class BasicSlashPath {
 public:
   using this_type = BasicSlashPath<TraitsT>;
   using trait_type = TraitsT;
@@ -221,23 +221,19 @@ public:
   BasicSlashPath() = default;
   BasicSlashPath(this_type const &Path) = default;
   BasicSlashPath(this_type &&Path) = default;
-
-  this_type &operator=(this_type const &) = default;
-
-  template <SlashPathStringConcept LocTraitsT>
+  template <SlashPathTraitsConcepts LocTraitsT>
   BasicSlashPath(BasicSlashPath<LocTraitsT> const &Path)
       : Path(Path.getString()) {}
-
-  BasicSlashPath(string_view_type const &Sv) : Path(string_type(Sv)) {}
-
   template <class... ArgsT>
   BasicSlashPath(ArgsT &&...Args) : Path(std::forward<ArgsT>(Args)...) {}
+  ~BasicSlashPath() = default;
+  this_type &operator=(this_type const &) = default;
 
-  template <SlashPathStringConcept LocTraitsT>
+  template <SlashPathTraitsConcepts LocTraitsT>
   bool operator==(BasicSlashPath<LocTraitsT> const &Right) {
     return compare(Right);
   }
-  template <SlashPathStringConcept LocTraitsT>
+  template <SlashPathTraitsConcepts LocTraitsT>
   std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Right) {
     return compare(Right) <=> 0;
   }
@@ -261,7 +257,7 @@ public:
 
   int compare(string_type const &S) const { return compare(this_type(S)); }
   int compare(string_view_type Sv) const { return compare(this_type(Sv)); }
-  template <SlashPathStringConcept LocTraitsT>
+  template <SlashPathTraitsConcepts LocTraitsT>
   int compare(BasicSlashPath<LocTraitsT> const &Path) const {
     int Count = 0;
     for (auto const &&[IT, IL] : std::views::zip(*this, Path)) {
@@ -361,3 +357,15 @@ using u8SlashPathView = BasicSlashPath<SlashPathViewTraits<char8_t>>;
 using u16SlashPathView = BasicSlashPath<SlashPathViewTraits<char16_t>>;
 using u32SlashPathView = BasicSlashPath<SlashPathViewTraits<char32_t>>;
 } // namespace maboroutu
+
+namespace std {
+template <maboroutu::SlashPathTraitsConcepts T>
+struct hash<maboroutu::BasicSlashPath<T>> {
+  using is_transparent = void;
+
+  size_t operator()(maboroutu::BasicSlashPath<T> PathView) const {
+    return std::hash<typename maboroutu::BasicSlashPath<T>::string_view_type>{}(
+        PathView.getString());
+  }
+};
+} // namespace std
