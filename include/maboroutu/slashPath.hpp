@@ -309,6 +309,78 @@ public:
   }
 };
 
+template <SlashPathTraitsConcepts TraitsT> class BasicSlashPathView {
+public:
+  using this_type = BasicSlashPath<TraitsT>;
+  using trait_type = TraitsT;
+
+  using string_view_type = typename trait_type::string_view_type;
+  using iterator = SlashPathIterator<this_type, trait_type>;
+
+  static constexpr typename string_view_type::value_type PreferredSeparator =
+      '/';
+
+private:
+protected:
+  string_view_type Path;
+
+public:
+  BasicSlashPathView() = default;
+  BasicSlashPathView(this_type const &Path) = default;
+  BasicSlashPathView(this_type &&Path) = default;
+  template <SlashPathTraitsConcepts LocTraitsT>
+  BasicSlashPathView(BasicSlashPath<LocTraitsT> const &Path)
+      : Path(Path.getString()) {}
+  template <class... ArgsT>
+  BasicSlashPathView(ArgsT &&...Args) : Path(std::forward<ArgsT>(Args)...) {}
+  ~BasicSlashPathView() = default;
+  this_type &operator=(this_type const &) = default;
+
+  template <SlashPathTraitsConcepts LocTraitsT>
+  bool operator==(BasicSlashPath<LocTraitsT> const &Right) {
+    return compare(Right);
+  }
+  template <SlashPathTraitsConcepts LocTraitsT>
+  std::strong_ordering operator<=>(BasicSlashPath<LocTraitsT> const &Right) {
+    return compare(Right) <=> 0;
+  }
+
+  iterator begin() { return iterator(Path, 0); }
+  iterator beginOrRootChild() {
+    return (hasRootDirectory()) ? ++begin() : begin();
+  }
+  iterator end() { return iterator(Path, string_view_type::npos); }
+  iterator endOrDirectoryLast() { return (isDirectory()) ? --end() : end(); }
+
+  bool isDirectory() const { return Path.back() == PreferredSeparator; }
+  bool hasRootDirectory() const { return trait_type::isHasRootDirectory(Path); }
+  bool isEmpty() { return begin() == end(); }
+  bool isOnlyName() {
+    if (isEmpty()) {
+      return false;
+    }
+    return begin() == endOrDirectoryLast();
+  }
+
+  int compare(string_view_type Sv) const { return compare(this_type(Sv)); }
+  template <SlashPathTraitsConcepts LocTraitsT>
+  int compare(BasicSlashPath<LocTraitsT> const &Path) const {
+    int Count = 0;
+    for (auto const &&[IT, IL] : std::views::zip(*this, Path)) {
+      auto Condition = IT <=> IL;
+      if (Condition > 0) {
+        return Count;
+      }
+      if (Condition < 0) {
+        return -Count;
+      }
+      Count++;
+    }
+    return 0;
+  }
+  string_view_type const getString() const noexcept { return Path; }
+};
+
 template <class CharT, class TraitsT = typename std::char_traits<CharT>,
           class Allocator = typename std::allocator<CharT>>
 struct SlashPathTraits {
@@ -318,7 +390,7 @@ struct SlashPathTraits {
   static constexpr bool IsStringTypeView = false;
 
   static bool
-  isHasRootDirectory(string_type const &Path,
+  isHasRootDirectory(string_view_type const Path,
                      string_type::value_type PreferredSeparator) noexcept {
     // Unix path root check.
     if (Path.size() == 0) {
@@ -333,34 +405,31 @@ using u8SlashPath = BasicSlashPath<SlashPathTraits<char8_t>>;
 using u16SlashPath = BasicSlashPath<SlashPathTraits<char16_t>>;
 using u32SlashPath = BasicSlashPath<SlashPathTraits<char32_t>>;
 
-template <class CharT, class TraitsT = typename std::char_traits<CharT>,
-          class Allocator = typename std::allocator<CharT>>
-struct SlashPathViewTraits {
-  using string_type = typename std::basic_string_view<CharT, TraitsT>;
-  using string_view_type = typename std::basic_string_view<CharT, TraitsT>;
-
-  static constexpr bool IsStringTypeView = true;
-
-  static bool
-  isHasRootDirectory(string_type const &Path,
-                     string_type::value_type PreferredSeparator) noexcept {
-    // Unix path root check.
-    if (Path.size() == 0) {
-      return false;
-    }
-    return Path[0] == PreferredSeparator;
-  }
-};
-using SlashPathView = BasicSlashPath<SlashPathViewTraits<char>>;
-using wSlashPathView = BasicSlashPath<SlashPathViewTraits<wchar_t>>;
-using u8SlashPathView = BasicSlashPath<SlashPathViewTraits<char8_t>>;
-using u16SlashPathView = BasicSlashPath<SlashPathViewTraits<char16_t>>;
-using u32SlashPathView = BasicSlashPath<SlashPathViewTraits<char32_t>>;
+using SlashPathView = BasicSlashPathView<SlashPathTraits<char>>;
+using wSlashPathView = BasicSlashPathView<SlashPathTraits<wchar_t>>;
+using u8SlashPathView = BasicSlashPathView<SlashPathTraits<char8_t>>;
+using u16SlashPathView = BasicSlashPathView<SlashPathTraits<char16_t>>;
+using u32SlashPathView = BasicSlashPathView<SlashPathTraits<char32_t>>;
 } // namespace maboroutu
 
 namespace std {
 template <maboroutu::SlashPathTraitsConcepts T>
 struct hash<maboroutu::BasicSlashPath<T>> {
+  using is_transparent = void;
+
+  size_t operator()(maboroutu::BasicSlashPath<T> PathView) const {
+    return std::hash<typename maboroutu::BasicSlashPath<T>::string_view_type>{}(
+        PathView.getString());
+  }
+  size_t operator()(
+      typename maboroutu::BasicSlashPath<T>::string_view_type StrPath) const {
+    return std::hash<typename maboroutu::BasicSlashPath<T>::string_view_type>{}(
+        StrPath);
+  }
+};
+
+template <maboroutu::SlashPathTraitsConcepts T>
+struct hash<maboroutu::BasicSlashPathView<T>> {
   using is_transparent = void;
 
   size_t operator()(maboroutu::BasicSlashPath<T> PathView) const {
