@@ -329,7 +329,7 @@ public:
   BasicSlashPathView(this_type const &Path) = default;
   BasicSlashPathView(this_type &&Path) = default;
   template <SlashPathTraitsConcepts LocTraitsT>
-  BasicSlashPathView(BasicSlashPath<LocTraitsT> const &Path)
+  BasicSlashPathView(BasicSlashPath<LocTraitsT> &Path)
       : Path(Path.getString()) {}
   template <class... ArgsT>
   BasicSlashPathView(ArgsT &&...Args) : Path(std::forward<ArgsT>(Args)...) {}
@@ -338,6 +338,10 @@ public:
 
   template <SlashPathTraitsConcepts LocTraitsT>
   bool operator==(BasicSlashPath<LocTraitsT> const &Right) {
+    return compare(Right);
+  }
+  template <SlashPathTraitsConcepts LocTraitsT>
+  bool operator==(BasicSlashPathView<LocTraitsT> const &Right) {
     return compare(Right);
   }
   template <SlashPathTraitsConcepts LocTraitsT>
