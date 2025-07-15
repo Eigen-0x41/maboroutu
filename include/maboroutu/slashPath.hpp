@@ -2,11 +2,11 @@
 
 #include <cassert>
 #include <compare>
-#include <concepts>
 #include <iterator>
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 namespace maboroutu {
 template <class T>
@@ -24,7 +24,8 @@ public:
   using difference_type = typename value_type::size_type;
   using iterator_concept = typename std::bidirectional_iterator_tag;
 
-  static_assert(std::signed_integral<difference_type>,
+  static_assert(std::is_signed_v<difference_type> &&
+                    std::is_integral_v<difference_type>,
                 "difference_type is unsigned.");
 
 private:
