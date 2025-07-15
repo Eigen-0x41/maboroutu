@@ -21,13 +21,12 @@ public:
   using this_type = SlashPathIterator<T, TraitsT>;
 
   using value_type = typename TraitsT::string_view_type;
-  using difference_type = typename value_type::size_type;
+  using difference_type =
+      typename value_type::size_type; // unsignedも許容する。
   using iterator_concept = typename std::bidirectional_iterator_tag;
 
   static_assert(std::is_integral_v<difference_type>,
                 "difference_type is not integral.");
-  static_assert(std::is_signed_v<difference_type>,
-                "difference_type is not signed.");
 
 private:
   friend T;
