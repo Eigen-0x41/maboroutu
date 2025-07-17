@@ -90,6 +90,8 @@ public:
       Container = Container | Value;
       return *this;
     }
+    this_type &operator=(value_type Value) const = delete;
+
     operator value_type() const noexcept {
       value_type Container = vValue();
       return (Container >> ShiftSize) & Filter;
