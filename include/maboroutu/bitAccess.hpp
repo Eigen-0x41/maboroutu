@@ -106,6 +106,14 @@ public:
         &Container);
   }
 
+  template <BitAccessEntryConcepts LocalT>
+  Accesser<LocalT::Begin, LocalT::Size> const &
+  operator()(LocalT Key) const noexcept {
+    return *reinterpret_cast<Accesser<LocalT::Begin, LocalT::Size> *>(
+        &Container);
+  }
+
   value_type &operator*() noexcept { return Container; }
+  value_type const &operator*() const noexcept { return Container; }
 };
 } // namespace maboroutu
