@@ -2,6 +2,7 @@
 
 #include "exceptionHelper.hpp"
 #include "listNode.hpp"
+#include "maboroutu/exexpected.hpp"
 #include <concepts>
 #include <stdexcept>
 #include <variant>
@@ -60,14 +61,45 @@ public:
     return AllocIndex;
   }
 
+  template <class... ArgsT>
+  maboroutu::expected<key_type> emplaceExpected(ArgsT &&...Args) {
+    auto &FreeIndex = FreeNodeSentinel.getForward();
+    if (FreeNodeSentinel == FreeIndex) {
+      key_type AllocIndex = Continer.size();
+      Continer.emplace_back(std::in_place_type_t<mapped_type>(),
+                            std::forward<ArgsT>(Args)...);
+      return AllocIndex;
+    }
+    // deletorでリンク解除。
+    key_type AllocIndex = FreeIndex.value();
+    if (AllocIndex >= Continer.size()) [[unlikely]] {
+      return maboroutu::unexpected{"Out Of Range Error!!"};
+    }
+    // Continer[AllocIndex].template emplace<mapped_type>(
+    //     std::forward<ArgsT>(Args)...);
+    Continer[AllocIndex] = mapped_type(std::forward<ArgsT>(Args)...);
+    return AllocIndex;
+  }
+
   void erase(key_type Index) {
     auto &EraseNode = Continer.at(Index);
-    if (std::holds_alternative<unmapped_type>(EraseNode))
+    if (std::holds_alternative<unmapped_type>(EraseNode)) [[unlikely]]
       return;
     FreeNodeSentinel.insertHelper(EraseNode, Index, Index);
   }
 
-  bool contains(key_type Index) const {
+  maboroutu::expected<void> eraseExpected(key_type Index) noexcept {
+    if (Index >= Continer.size()) [[unlikely]] {
+      return maboroutu::unexpected{"Out Of Range Error!!"};
+    }
+    auto &EraseNode = Continer[Index];
+    if (std::holds_alternative<mapped_type>(EraseNode)) [[likely]] {
+      FreeNodeSentinel.insertHelper(EraseNode, Index, Index);
+    }
+    return {};
+  }
+
+  bool contains(key_type Index) const noexcept {
     if (Index >= Continer.size()) [[unlikely]] {
       return false;
     }
@@ -91,7 +123,19 @@ public:
     throw std::runtime_error(maboroutu::exceptionMessageCreater(
         this, "at", "Select index is not type template<T>!!"));
   }
+  mapped_type const &at(key_type Index) const {
+    if (auto &RetValue = Continer.at(Index);
+        std::holds_alternative<mapped_type>(RetValue)) [[likely]] {
+      return std::get<mapped_type>(RetValue);
+    }
+    throw std::runtime_error(maboroutu::exceptionMessageCreater(
+        this, "at", "Select index is not type template<T>!!"));
+  }
+
   mapped_type &operator[](key_type Index) noexcept {
+    return std::get<mapped_type>(Continer[Index]);
+  }
+  mapped_type const &operator[](key_type Index) const noexcept {
     return std::get<mapped_type>(Continer[Index]);
   }
 };

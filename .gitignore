@@ -11,6 +11,8 @@
 !/include/*
 !/src/
 !/src/*
+!/test/
+!/test/*
 
 !/CMakeLists.txt
 !/LICENSE
