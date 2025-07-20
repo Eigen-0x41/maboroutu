@@ -44,8 +44,7 @@ project(maboroutu
 
 ### Main
 add_library(${PROJECT_NAME} STATIC
-  ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp
-  ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}.hpp)
+  ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 # target_compile_options(${PROJECT_NAME} PRIVATE -pthread)

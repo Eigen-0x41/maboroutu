@@ -52,3 +52,15 @@ target_link_libraries(${PROJECT_NAME}_BitAccessTest PRIVATE maboroutu)
 
 add_test(NAME ${PROJECT_NAME}_BitAccess COMMAND ${PROJECT_NAME}_BitAccessTest)
 
+### Test: Error
+### Test Main
+add_executable(${PROJECT_NAME}_ErrorTest ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/Error.cpp)
+# target_include_directories(${PROJECT_NAME}_ErrorTest PUBLIC ${PROJECT_SOURCE_DIR}/include)
+# target_compile_options(${PROJECT_NAME}_ErrorTest PUBLIC -Wno-dev)
+
+### Test Execute Dependencies
+# target_link_libraries(${PROJECT_NAME}_ErrorTest PRIVATE Boost::test)
+target_link_libraries(${PROJECT_NAME}_ErrorTest PRIVATE Boost::unit_test_framework)
+target_link_libraries(${PROJECT_NAME}_ErrorTest PRIVATE maboroutu)
+
+add_test(NAME ${PROJECT_NAME}_Error COMMAND ${PROJECT_NAME}_ErrorTest)
