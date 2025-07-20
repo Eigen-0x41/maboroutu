@@ -12,10 +12,10 @@ using binary = typename std::vector<std::byte>;
 static_assert(sizeof(typename binary::value_type) == 1,
               "Requested binary sizeof is not 1.");
 
-template <class Ty = void, ExceptionConcepts Err =
-                               Exception<ExceptionDescript, ExceptionCategoly>>
+using exception = Exception<ExceptionDescript, ExceptionCategoly>;
+template <class Ty = void, ExceptionConcepts Err = exception>
 using ret = typename std::expected<Ty, Err>;
-using retErr = typename ret<void>::unexpected_type;
+using retErr = typename std::unexpected<exception>;
 
 template <ExceptionConcepts ErrT, class... ArgsT>
 retErr makeRetErr(ArgsT &&...Args) {
