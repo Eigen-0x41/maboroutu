@@ -1,7 +1,7 @@
 #pragma once
 
-#include "exceptionHelper.hpp"
-#include "listNode.hpp"
+#include "maboroutu/exceptionHelper.hpp"
+#include "maboroutu/linkNode.hpp"
 #include <array>
 #include <concepts>
 #include <stdexcept>
@@ -23,7 +23,7 @@ public:
 
   using key_type = IndexT;
   using mapped_type = T;
-  using unmapped_type = ListNode<this_type, IndexT>;
+  using unmapped_type = LinkNode<this_type, IndexT>;
 
   using value_type = std::variant<char, mapped_type, unmapped_type>;
 

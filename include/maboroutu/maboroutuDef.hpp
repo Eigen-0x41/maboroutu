@@ -25,4 +25,37 @@ template <class T> retErr convRetErr(ret<T> const &Ret) {
   return retErr{Ret.error()};
 }
 
+template <class T> class VRef {
+private:
+protected:
+public:
+  using this_type = VRef;
+
+  using value_type = T;
+  using pointer = value_type *;
+  using const_pointer = value_type const *;
+  using reference = value_type &;
+  using const_reference = value_type const &;
+
+private:
+  pointer Value;
+
+protected:
+public:
+  VRef() = delete;
+  VRef(this_type const &This) : Value(This.Value) {}
+  VRef(this_type &&This) : Value(This.Value) {}
+  VRef(reference Value) : Value(&Value) {}
+  ~VRef() = default;
+  this_type &operator=(this_type const &This) { *Value = *This.Value; }
+  this_type &operator=(this_type &&This) { Value = This.Value; };
+  this_type &operator=(const_reference V) noexcept {
+    *Value = V;
+    return *this;
+  }
+  operator reference() noexcept { return *Value; }
+  reference operator*() noexcept { return *Value; }
+  pointer operator->() noexcept { return Value; }
+};
+
 } // namespace maboroutu

@@ -14,9 +14,9 @@ enum class ExceptionCategoly : char {
 enum class ExceptionDescript : char {
   None,
   Domain,
-  Invalid_argument,
+  InvalidArgument,
   Length,
-  Out_of_range,
+  OutOfRange,
   Range,
   Overflow,
   Underflow,
