@@ -14,20 +14,20 @@ endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   # clang++
   add_compile_options(-Wall -Wextra --pedantic-errors)
-  add_compile_options($<IF:$<CONFIG:Debug>, -g, -O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>, -g, -O3>)
+  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>,-g,-O3>)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # g++
   add_compile_options(-Wall -Wextra --pedantic-errors)
-  add_compile_options($<IF:$<CONFIG:Debug>, -g, -O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>, -g, -O3>)
+  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>,-g,-O3>)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   # icc, icx
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # cl, clang-cl
   add_compile_options(/EHsc /W4 /permissive-)
-  add_compile_options($<IF:$<CONFIG:Debug>, /Z7, /O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>, /Z7, /Ot>)
+  add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/Ot>)
 endif()
 
 
