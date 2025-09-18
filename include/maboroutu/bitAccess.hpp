@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cmath>
 #include <concepts>
-#include <utility>
 namespace maboroutu {
 
 template <class T>
@@ -55,7 +53,7 @@ public:
 
     static_assert(SizeV > 0, "Requested field size is > 0.");
     static_assert((LBeginV + SizeV) <= ValueBitSize,
-                  "Requested field is over than base type bit size.");
+                  "Requested field fits the bit size of the base type.");
 
     static constexpr size_t Size = SizeV;
     static constexpr size_t Begin = LBeginV;

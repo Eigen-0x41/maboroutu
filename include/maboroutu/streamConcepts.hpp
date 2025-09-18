@@ -5,10 +5,10 @@
 #include <cstdio>
 namespace maboroutu {
 template <class T>
-concept StreamSeekConcept = requires(T &V) {
+concept StreamPosConcept = requires(T &V) {
   typename T::OffsetFlag;
-  { V.fgetpos((fpos_t *)(nullptr)) } -> std::same_as<int>;
-  { V.fseek(long(), typename T::OffsetFlag()) } -> std::same_as<int>;
+  { V.fgetpos() } -> std::same_as<fpos_t>;
+  { V.fsetpos((fpos_t)(0)) } -> std::same_as<int>;
 };
 
 template <class T>
@@ -20,7 +20,8 @@ concept StreamOutputConcept = requires(T &V) {
   { V.fwrite((void *)(nullptr), size_t(), size_t()) } -> std::same_as<size_t>;
 };
 template <class T>
-concept StreamIOConcept = StreamInputConcept<T> && StreamOutputConcept<T>;
+concept StreamIOConcept =
+    StreamInputConcept<T> && StreamOutputConcept<T> && StreamPosConcept<T>;
 
 template <class T>
 concept StreamTextInputConcept = requires(T &V) {

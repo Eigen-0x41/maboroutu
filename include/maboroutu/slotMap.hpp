@@ -1,142 +1,300 @@
 #pragma once
 
-#include "maboroutu/exceptionHelper.hpp"
-#include "maboroutu/exexpected.hpp"
-#include "maboroutu/linkNode.hpp"
-#include <concepts>
+#include "maboroutu/maboroutuDef.hpp"
+#include <cassert>
+#include <deque>
+#include <memory>
 #include <stdexcept>
-#include <variant>
-#include <vector>
+#include <utility>
+
 namespace maboroutu {
-/**
- * @brief
- * 要素を自然数と0の範囲で索引付けして格納します。
- * 要素の挿入、削除、索引検索は全てO(1)で完了します。
- *
- * @tparam T [TODO:tparam]
- * @param Index [TODO:parameter]
- * @return [TODO:return]
- */
-template <class T, std::integral IndexT = size_t> class SlotMap {
+
+namespace {
+// [[SlotMapKey]]
+template <class DependT> class SlotMapKey {
+private:
+protected:
 public:
-  using this_type = SlotMap<T, IndexT>;
+  using this_type = SlotMapKey;
 
-  using key_type = IndexT;
-  using mapped_type = T;
-  using unmapped_type = LinkNode<this_type, IndexT>;
+  using size_type = size_t;
 
-  using value_type = std::variant<mapped_type, unmapped_type>;
-
-  static constexpr key_type MasterIndex = 0;
+  static constexpr size_type NPos = -1;
 
 private:
-  friend unmapped_type;
+  friend DependT;
 
-  std::vector<value_type> Continer;
+  size_type Key;
 
-  unmapped_type FreeNodeSentinel;
+  SlotMapKey(size_type const &Key) : Key(Key) {}
 
-  unmapped_type &atValue(key_type Index) { return Continer.at(Index); }
-
+protected:
 public:
-  SlotMap() : Continer({}), FreeNodeSentinel(this) {}
-  SlotMap(this_type const &Value) = delete;
-  SlotMap(this_type &&Value) = default;
+  SlotMapKey() : Key(NPos) {}
+  SlotMapKey(this_type const &Rhs) : Key(Rhs.Key) {}
+  SlotMapKey(this_type &&Rhs) : Key(Rhs.Key) {}
+  ~SlotMapKey() = default;
+  this_type &operator=(this_type const &) = default;
+  this_type &operator=(this_type &&) = default;
 
-  SlotMap(std::initializer_list<value_type> Value)
-      : Continer(Value), FreeNodeSentinel(this) {}
+  constexpr operator bool() const noexcept { return Key != NPos; }
+};
 
-  template <class... ArgsT> key_type emplace(ArgsT &&...Args) {
-    auto &FreeIndex = FreeNodeSentinel.getForward();
-    if (FreeNodeSentinel == FreeIndex) {
-      key_type AllocIndex = Continer.size();
-      Continer.emplace_back(std::in_place_type_t<mapped_type>(),
-                            std::forward<ArgsT>(Args)...);
-      return AllocIndex;
-    }
-    // deletorでリンク解除。
-    key_type AllocIndex = FreeIndex.value();
-    Continer.at(AllocIndex)
-        .template emplace<mapped_type>(std::forward<ArgsT>(Args)...);
-    return AllocIndex;
-  }
+template <class DependT, class T> class SlotMapContiner {
+public:
+  using this_type = SlotMapContiner<DependT, T>;
 
+  using value_type = T;
+  using key_type = SlotMapKey<DependT>;
+
+protected:
+private:
+private:
+  bool IsEnable;
+  key_type Next;
+  // 無名共用体
+  union {
+    value_type Value;
+  };
+
+protected:
+public:
+  SlotMapContiner() : IsEnable(false), Next(), Value() {}
+  SlotMapContiner(this_type const &Rhs)
+      : IsEnable(Rhs.IsEnable), Next(Rhs.Next), Value(Rhs.Value) {}
+  SlotMapContiner(this_type &&Rhs)
+      : IsEnable(Rhs.IsEnable), Next(Rhs.Next), Value(std::move(Rhs.Value)) {}
+  SlotMapContiner(value_type const &Value)
+      : IsEnable(true), Next(), Value(Value) {}
   template <class... ArgsT>
-  maboroutu::expected<key_type> emplaceExpected(ArgsT &&...Args) {
-    auto &FreeIndex = FreeNodeSentinel.getForward();
-    if (FreeNodeSentinel == FreeIndex) {
-      key_type AllocIndex = Continer.size();
-      Continer.emplace_back(std::in_place_type_t<mapped_type>(),
-                            std::forward<ArgsT>(Args)...);
-      return AllocIndex;
+  SlotMapContiner(ArgsT &&...Args) : IsEnable(true), Next(), Value() {
+    std::construct_at(&Value, std::forward<ArgsT>(Args)...);
+  }
+  ~SlotMapContiner() {
+    if (IsEnable) {
+      destroy();
     }
-    // deletorでリンク解除。
-    key_type AllocIndex = FreeIndex.value();
-    if (AllocIndex >= Continer.size()) [[unlikely]] {
-      return maboroutu::unexpected{"Out Of Range Error!!"};
-    }
-    // Continer[AllocIndex].template emplace<mapped_type>(
-    //     std::forward<ArgsT>(Args)...);
-    Continer[AllocIndex] = mapped_type(std::forward<ArgsT>(Args)...);
-    return AllocIndex;
   }
 
-  void erase(key_type Index) {
-    auto &EraseNode = Continer.at(Index);
-    if (std::holds_alternative<unmapped_type>(EraseNode)) [[unlikely]]
-      return;
-    FreeNodeSentinel.insertHelper(EraseNode, Index, Index);
+  constexpr key_type &next() noexcept { return Next; }
+  constexpr key_type const &next() const noexcept { return Next; }
+
+  constexpr value_type &value() noexcept {
+    assert(IsEnable);
+    return Value;
+  }
+  constexpr value_type const &value() const noexcept {
+    assert(IsEnable);
+    return Value;
   }
 
-  maboroutu::expected<void> eraseExpected(key_type Index) noexcept {
-    if (Index >= Continer.size()) [[unlikely]] {
-      return maboroutu::unexpected{"Out Of Range Error!!"};
-    }
-    auto &EraseNode = Continer[Index];
-    if (std::holds_alternative<mapped_type>(EraseNode)) [[likely]] {
-      FreeNodeSentinel.insertHelper(EraseNode, Index, Index);
-    }
-    return {};
+  template <class... ArgsT> constexpr void construct(ArgsT &&...Args) {
+    assert(!IsEnable);
+    // ::new (static_cast<void *>(&Value.Value))
+    // T(std::forward<ArgsT>(Args)...);
+    std::construct_at(&Value, std::forward<ArgsT>(Args)...);
+    IsEnable = true;
+  }
+  constexpr void destroy() {
+    assert(IsEnable);
+    // &(Value.Value)->~T();
+    std::destroy_at(&Value);
+    IsEnable = false;
   }
 
-  bool contains(key_type Index) const noexcept {
-    if (Index >= Continer.size()) [[unlikely]] {
+  constexpr operator bool() const noexcept { return IsEnable; }
+};
+
+} // namespace
+
+template <class T> class SlotMap {
+public:
+  using this_type = SlotMap<T>;
+
+  using key_type = SlotMapKey<this_type>;
+  using value_type = T;
+  using size_type = size_t;
+
+protected:
+private:
+  using continer_value = SlotMapContiner<this_type, T>;
+  using continer = typename std::deque<continer_value>;
+
+private:
+  continer Continer;
+  key_type NextConstructed;
+  key_type NextDestroyed;
+  size_type Size;
+  size_type FreeSize;
+
+protected:
+public:
+  SlotMap()
+      : Continer(), NextConstructed(), NextDestroyed(), Size(0), FreeSize(0) {}
+  SlotMap(this_type const &Rhs) = default;
+  SlotMap(this_type &&Rhs) = default;
+  ~SlotMap() = default;
+  this_type &operator=(this_type const &) = default;
+  this_type &operator=(this_type &&) = default;
+
+  bool contains(key_type const &Key) const {
+    if (!Key) [[unlikely]] {
       return false;
     }
-
-    return std::holds_alternative<mapped_type>(Continer[Index]);
-  }
-
-  /**
-   * @brief
-   * 要素を取得する。
-   * もし要素が型TでなければruntimeErrorを排出する。
-   *
-   * @param Index [TODO:parameter]
-   * @return [TODO:return]
-   */
-  mapped_type &at(key_type Index) {
-    if (auto &RetValue = Continer.at(Index);
-        std::holds_alternative<mapped_type>(RetValue)) [[likely]] {
-      return std::get<mapped_type>(RetValue);
+    if (Key.Key >= Continer.size()) [[unlikely]] {
+      return false;
     }
-    throw std::runtime_error(maboroutu::exceptionMessageCreater(
-        this, "at", "Select index is not type template<T>!!"));
-  }
-  mapped_type const &at(key_type Index) const {
-    if (auto &RetValue = Continer.at(Index);
-        std::holds_alternative<mapped_type>(RetValue)) [[likely]] {
-      return std::get<mapped_type>(RetValue);
-    }
-    throw std::runtime_error(maboroutu::exceptionMessageCreater(
-        this, "at", "Select index is not type template<T>!!"));
+    return bool(Continer[Key.Key]);
   }
 
-  mapped_type &operator[](key_type Index) noexcept {
-    return std::get<mapped_type>(Continer[Index]);
+  value_type &at(key_type const &Key) noexcept {
+    if (!contains(Key)) [[unlikely]] {
+      throw std::out_of_range("Key is not contains");
+    }
+    return Continer[Key.Key].value();
   }
-  mapped_type const &operator[](key_type Index) const noexcept {
-    return std::get<mapped_type>(Continer[Index]);
+  value_type const &at(key_type const &Key) const noexcept {
+    if (!contains(Key)) [[unlikely]] {
+      throw std::out_of_range("Key is not contains");
+    }
+    return Continer[Key.Key].value();
   }
+
+  ret<VRef<value_type>> tryAt(key_type const &Key) noexcept {
+    if (!contains(Key)) [[unlikely]] {
+      return makeRetErr<ret<>::error_type>(
+          ret<>::error_type::categoly_type::Logic,
+          ret<>::error_type::descript_type::OutOfRange, "Key is not contains.");
+    }
+    return VRef<value_type>(Continer[Key.Key].value());
+  }
+  ret<VRef<value_type> const> tryAt(key_type const &Key) const noexcept {
+    if (!contains(Key)) [[unlikely]] {
+      return makeRetErr<ret<>::error_type>(
+          ret<>::error_type::categoly_type::Logic,
+          ret<>::error_type::descript_type::OutOfRange, "Key is not contains.");
+    }
+    return VRef<value_type>(Continer[Key.Key].value());
+  }
+
+  value_type &operator[](key_type const &Key) noexcept {
+    assert(contains(Key));
+    return Continer[Key.Key].value();
+  }
+  value_type const &operator[](key_type const &Key) const noexcept {
+    assert(contains(Key));
+    return Continer[Key.Key].value();
+  }
+
+  size_type size() const noexcept { return Size; }
+  size_type freeSize() const noexcept { return FreeSize; }
+
+  key_type insert(value_type const &Value) {
+    if (NextDestroyed) {
+      key_type ConstructTarget = NextDestroyed;
+      continer_value &Target = Continer[ConstructTarget.Key];
+
+      Target.construct(Value);
+      NextDestroyed = Target.next();
+
+      Target.next() = NextConstructed;
+      NextConstructed = ConstructTarget;
+
+      --FreeSize;
+      ++Size;
+      return ConstructTarget;
+    }
+
+    key_type ConstructTarget(Continer.size());
+    Continer.push_back(continer_value(Value));
+    NextConstructed = ConstructTarget;
+
+    ++Size;
+    return ConstructTarget;
+  }
+  template <class... ArgsT> key_type emplace(ArgsT &&...Args) {
+    if (NextDestroyed) {
+      key_type ConstructTarget = NextDestroyed;
+      continer_value &Target = Continer[ConstructTarget.Key];
+
+      Target.construct(std::forward<ArgsT>(Args)...);
+      NextDestroyed = Target.next();
+
+      Target.next() = NextConstructed;
+      NextConstructed = ConstructTarget;
+
+      --FreeSize;
+      ++Size;
+      return ConstructTarget;
+    }
+
+    key_type ConstructTarget(Continer.size());
+    Continer.emplace_back(std::forward<ArgsT>(Args)...);
+    NextConstructed = ConstructTarget;
+
+    ++Size;
+    return ConstructTarget;
+  }
+  key_type erase(key_type const &Key) {
+    if (!contains(Key)) [[unlikely]] {
+      throw std::out_of_range("Key is not contains.");
+    }
+
+    continer_value &Target = Continer[Key.Key];
+
+    Target.destroy();
+    NextConstructed = Target.next();
+
+    Target.next() = NextDestroyed;
+    NextDestroyed = Key;
+
+    --Size;
+    ++FreeSize;
+
+    return NextConstructed;
+  }
+
+  constexpr void shrink() {
+    size_type DeleteValueBeginIndex = Continer.size();
+    while (DeleteValueBeginIndex != 0) {
+      --DeleteValueBeginIndex;
+
+      if (Continer[DeleteValueBeginIndex]) {
+        ++DeleteValueBeginIndex;
+        break;
+      }
+    }
+
+    size_type const DeleteSize = Continer.size() - DeleteValueBeginIndex;
+
+    key_type CurrentKey = NextDestroyed;
+    for (auto I = 0; I < DeleteSize;) {
+      auto &CurrentValue = Continer[CurrentKey];
+      key_type const &TargetKey = CurrentValue.Next;
+
+      if (TargetKey >= DeleteValueBeginIndex) {
+        CurrentValue.Next = Continer[TargetKey].Next;
+        --I;
+      }
+
+      CurrentKey = CurrentValue.Next;
+    }
+
+    for (auto I = 0; I < DeleteSize; ++I) {
+      Continer.pop_back();
+    }
+
+    FreeSize -= DeleteSize;
+  }
+
+#ifdef _DEBUG
+
+  [[deprecated("DEBUG FUNCTION")]] constexpr size_type
+  __DEBUG_F__GET_KEY_INDEX_(key_type const &Key) {
+    return Key.Key;
+  }
+
+#endif // _DEBUG
 };
+
 } // namespace maboroutu

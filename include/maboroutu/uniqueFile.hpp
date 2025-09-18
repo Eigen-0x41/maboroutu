@@ -2,6 +2,8 @@
 
 // 直接の依存ではありませんが仕様を満たすために必要です
 #include "streamConcepts.hpp"
+#include <cassert>
+#include <concepts>
 #include <corecrt.h>
 #include <cstdarg>
 #include <cstdio>
@@ -76,6 +78,14 @@ public:
     return *this;
   }
 
+  size_t size() noexcept {
+    size_t Current = ftell();
+    fseek(0L, OffsetFlag::End);
+    size_t const RetValue = ftell();
+    fseek(Current, OffsetFlag::End);
+    return RetValue;
+  }
+
   [[nodiscard]] static int constexpr remove(const char *Filename) noexcept {
     return ::remove(Filename);
   }
@@ -113,13 +123,16 @@ public:
   [[nodiscard]] [[deprecated("Using fopen.")]] bool constexpr fopen(
       const char *Filename, const char *Mode) noexcept {
     Continer.reset(::fopen(Filename, Mode));
-    return Continer != nullptr;
+    if (Continer == nullptr) [[unlikely]] {
+      return false;
+    }
+    return true;
   }
   [[nodiscard]] errno_t constexpr fopen_s(const char *Filename,
                                           const char *Mode) noexcept {
     ::FILE *File;
     errno_t RetValue = ::fopen_s(&File, Filename, Mode);
-    if (RetValue) {
+    if (RetValue) [[unlikely]] {
       return RetValue;
     }
     Continer.reset(File);
@@ -175,16 +188,19 @@ public:
                           size_t Size) noexcept {
     return ::fwrite(Ptr, TypeSize, Size, Continer.get());
   }
-  int constexpr fgetpos(fpos_t *Pos) noexcept {
-    return ::fgetpos(Continer.get(), Pos);
+
+  fpos_t constexpr fgetpos() noexcept {
+    ::fpos_t RetValue;
+    ::fgetpos(Continer.get(), &RetValue);
+    return RetValue;
   }
 
   int constexpr fseek(long Offset, OffsetFlag OffsetFlag) noexcept {
     return ::fseek(Continer.get(), Offset, (int)OffsetFlag);
   }
 
-  int constexpr fsetpos(const fpos_t *Pos) noexcept {
-    return ::fsetpos(Continer.get(), Pos);
+  int constexpr fsetpos(fpos_t Pos) noexcept {
+    return ::fsetpos(Continer.get(), &Pos);
   }
   [[nodiscard]] long int constexpr ftell() noexcept {
     return ::ftell(Continer.get());

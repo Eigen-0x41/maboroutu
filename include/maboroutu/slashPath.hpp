@@ -26,7 +26,7 @@ public:
   using iterator_concept = typename std::bidirectional_iterator_tag;
 
   static_assert(std::is_integral_v<difference_type>,
-                "difference_type is not integral.");
+                "difference_type is integral.");
 
 private:
   friend T;
