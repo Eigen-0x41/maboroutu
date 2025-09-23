@@ -1,5 +1,6 @@
 #pragma once
 
+#include "maboroutu/maboroutuDef.hpp"
 #include "maboroutu/streamConcepts.hpp"
 #include <bit>
 #include <cassert>
@@ -17,7 +18,7 @@ private:
 protected:
 public:
   using this_type = BinaryBuffer;
-  using value_type = typename std::byte;
+  using value_type = byte_t;
   using size_type = int64_t;
 
 private:
@@ -189,6 +190,24 @@ public:
       write<uint64_t, BinaryEndianV>(Pos, std::bit_cast<uint64_t>(Value));
       return;
     }
+  }
+
+  constexpr value_type &rawAccess(size_type Pos) {
+    if (Pos >= BufferSize) [[unlikely]] {
+      throw std::out_of_range("Pos >= BufferSize");
+    }
+    return Buffer[Pos];
+  }
+  constexpr ret<VRef<value_type>> tryRawAccess(size_type Pos) noexcept {
+    if (Pos >= BufferSize) [[unlikely]] {
+      return makeRetErr<ret<>::error_type>(
+          ret<>::error_type::categoly_type::Logic,
+          ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
+    }
+    return VRef<value_type>(Buffer[Pos]);
+  }
+  constexpr value_type &operator[](size_type Pos) noexcept {
+    return Buffer[Pos];
   }
 };
 } // namespace maboroutu

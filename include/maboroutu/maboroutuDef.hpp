@@ -1,17 +1,19 @@
 #pragma once
 
 #include "maboroutu/error.hpp"
+#include <climits>
 #include <cstddef>
 #include <expected>
 #include <type_traits>
 #include <utility>
 #include <vector>
 namespace maboroutu {
-using byte = typename std::byte;
-using binary = typename std::vector<std::byte>;
+using byte_t = typename std::byte;
+using binary_t = typename std::vector<byte_t>;
 
-static_assert(sizeof(typename binary::value_type) == 1,
+static_assert(sizeof(typename binary_t::value_type) == 1,
               "Requested binary sizeof is 1.");
+static_assert(CHAR_BIT == 8, "Requested CHAR_BIT size is 8.");
 
 using exception = Exception<ExceptionDescript, ExceptionCategoly>;
 template <class Ty = void, ExceptionConcepts Err = exception>
@@ -72,7 +74,7 @@ public:
     return *this;
   }
   operator reference() noexcept { return *Value; }
-  auto operator*() noexcept -> decltype(**Value) { return **Value; }
+  decltype(auto) operator*() noexcept { return **Value; }
   pointer operator->() noexcept { return Value; }
 
   friend bool operator==(this_type const &Lhs, this_type const &Rhs) noexcept {
