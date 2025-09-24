@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 namespace maboroutu {
@@ -34,7 +35,7 @@ private:
     Buffer[RawPos] = Value;
   }
 
-  [[nodiscard]] constexpr value_type rawRead(size_type RawPos) {
+  [[nodiscard]] constexpr value_type rawRead(size_type RawPos) const {
     if (RawPos >= Size) [[unlikely]] {
       throw std::invalid_argument("");
     }
@@ -72,7 +73,7 @@ public:
   }
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
-  T read(size_t Pos) {
+  T read(size_t Pos) const {
     if (Pos < Offset) [[unlikely]] {
       throw std::invalid_argument("Pos is lower than Offset.");
     }
@@ -94,7 +95,7 @@ public:
     return std::byteswap(RetValue);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
-  T read(size_t Pos) {
+  T read(size_t Pos) const {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
@@ -110,7 +111,7 @@ public:
     }
   }
   template <std::floating_point T, std::endian BinaryEndianV>
-  T read(size_t Pos) {
+  T read(size_t Pos) const {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
@@ -198,15 +199,36 @@ public:
     }
     return Buffer[Pos];
   }
-  constexpr ret<VRef<value_type>> tryRawAccess(size_type Pos) noexcept {
+  constexpr value_type const &rawAccess(size_type Pos) const {
+    if (Pos >= BufferSize) [[unlikely]] {
+      throw std::out_of_range("Pos >= BufferSize");
+    }
+    return Buffer[Pos];
+  }
+
+  constexpr ret<std::reference_wrapper<value_type>>
+  tryRawAccess(size_type Pos) noexcept {
     if (Pos >= BufferSize) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
     }
-    return VRef<value_type>(Buffer[Pos]);
+    return std::ref(Buffer[Pos]);
   }
+  constexpr ret<std::reference_wrapper<value_type const>>
+  tryRawAccess(size_type Pos) const noexcept {
+    if (Pos >= BufferSize) [[unlikely]] {
+      return makeRetErr<ret<>::error_type>(
+          ret<>::error_type::categoly_type::Logic,
+          ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
+    }
+    return std::ref(Buffer[Pos]);
+  }
+
   constexpr value_type &operator[](size_type Pos) noexcept {
+    return Buffer[Pos];
+  }
+  constexpr value_type const &operator[](size_type Pos) const noexcept {
     return Buffer[Pos];
   }
 };

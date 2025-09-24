@@ -3,6 +3,7 @@
 #include "maboroutu/maboroutuDef.hpp"
 #include <cassert>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -160,21 +161,22 @@ public:
     return Continer[Key.Key].value();
   }
 
-  ret<VRef<value_type>> tryAt(key_type const &Key) noexcept {
+  ret<std::reference_wrapper<value_type>> tryAt(key_type const &Key) noexcept {
     if (!contains(Key)) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Key is not contains.");
     }
-    return VRef<value_type>(Continer[Key.Key].value());
+    return std::ref(Continer[Key.Key].value());
   }
-  ret<VRef<value_type> const> tryAt(key_type const &Key) const noexcept {
+  ret<std::reference_wrapper<value_type> const>
+  tryAt(key_type const &Key) const noexcept {
     if (!contains(Key)) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Key is not contains.");
     }
-    return VRef<value_type>(Continer[Key.Key].value());
+    return std::ref(Continer[Key.Key].value());
   }
 
   value_type &operator[](key_type const &Key) noexcept {
