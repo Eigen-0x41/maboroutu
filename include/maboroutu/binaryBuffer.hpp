@@ -1,5 +1,6 @@
 #pragma once
 
+#include "maboroutu/exbit.hpp"
 #include "maboroutu/maboroutuDef.hpp"
 #include "maboroutu/streamConcepts.hpp"
 #include <bit>
@@ -9,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -21,6 +23,8 @@ public:
   using this_type = BinaryBuffer;
   using value_type = byte_t;
   using size_type = int64_t;
+
+  static_assert(!is_mix_endian_v, "is not mix endian.");
 
 private:
   size_type Offset;
@@ -83,25 +87,26 @@ public:
     if (Pos < Offset) [[unlikely]] {
       throw std::invalid_argument("Pos is lower than Offset.");
     }
-    auto RawPos = Pos - Offset;
-    T RetValue = NULL;
 
+    auto RawPos = Pos - Offset;
     if ((RawPos + sizeof(T)) >= Size) [[unlikely]] {
       throw std::range_error("is ((Pos  + sizeof(T)) >= Size).");
     }
 
-    for (auto I = 0; I < sizeof(T); I++) {
-      RetValue |= std::rotl(static_cast<T>(rawRead(RawPos + I)),
-                            CHAR_BIT * ((sizeof(T) - 1) - I));
-    }
+    if constexpr (sizeof(T) > 1) {
+      T RetValue = NULL;
+      std::memcpy(&RetValue, Buffer.get() + Pos, sizeof(T));
 
-    if constexpr (BinaryEndianV == std::endian::big) {
+      if constexpr (BinaryEndianV != std::endian::native) {
+        return std::byteswap(RetValue);
+      }
       return RetValue;
     }
-    return std::byteswap(RetValue);
+
+    return std::bit_cast<T>(Buffer[Pos]);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
-  T read(size_t Pos) const {
+  constexpr T read(size_t Pos) const {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
@@ -117,7 +122,7 @@ public:
     }
   }
   template <std::floating_point T, std::endian BinaryEndianV>
-  T read(size_t Pos) const {
+  constexpr T read(size_t Pos) const {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
@@ -132,6 +137,10 @@ public:
       return std::bit_cast<T>(read<uint64_t, BinaryEndianV>(Pos));
     }
   }
+  template <class T> T read(size_t Pos) const = delete;
+  template <> constexpr byte_t read<byte_t>(size_t Pos) const {
+    return std::bit_cast<byte_t>(read<uint8_t, std::endian::native>(Pos));
+  }
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
   void write(size_t Pos, T Value) {
@@ -139,10 +148,6 @@ public:
       throw std::invalid_argument("Pos is lower than Offset.");
     }
     auto LocalPos = Pos - Offset;
-
-    if constexpr (BinaryEndianV == std::endian::little) {
-      Value = std::byteswap(Value);
-    }
 
     if ((LocalPos + sizeof(T)) >= CapacitySize) [[unlikely]] {
       throw std::range_error(
@@ -153,14 +158,19 @@ public:
       Size = Pos + sizeof(T);
     }
 
-    for (auto I = 0; I < sizeof(T); I++) {
-      rawWrite(static_cast<std::byte>(
-                   std::rotr(Value, CHAR_BIT * ((sizeof(T) - 1) - I))),
-               I + LocalPos);
+    if constexpr (sizeof(T) > 1) {
+      if constexpr (BinaryEndianV != std::endian::native) {
+        Value = std::byteswap(Value);
+      }
+
+      std::memcpy(Buffer.get() + LocalPos, &Value, sizeof(T));
+      return;
     }
+
+    Buffer[Pos] = std::bit_cast<value_type>(Value);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
-  void write(size_t Pos, T Value) {
+  constexpr void write(size_t Pos, T Value) {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       write<uint8_t, BinaryEndianV>(Pos, std::bit_cast<uint8_t>(Value));
@@ -180,7 +190,7 @@ public:
     }
   }
   template <std::floating_point T, std::endian BinaryEndianV>
-  void write(size_t Pos, T Value) {
+  constexpr void write(size_t Pos, T Value) {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
     if constexpr (sizeof(T) == 1) {
       write<uint8_t, BinaryEndianV>(Pos, std::bit_cast<uint8_t>(Value));
@@ -198,6 +208,11 @@ public:
       write<uint64_t, BinaryEndianV>(Pos, std::bit_cast<uint64_t>(Value));
       return;
     }
+  }
+  template <class T> constexpr void write(size_t Pos, T Value) = delete;
+  template <> constexpr void write<byte_t>(size_t Pos, byte_t Value) {
+    write<uint8_t, std::endian::native>(Pos, std::bit_cast<uint8_t>(Value));
+    return;
   }
 
   constexpr value_type &rawAccess(size_type Pos) {

@@ -4,6 +4,7 @@
 #include <bit>
 #include <concepts>
 #include <cstddef>
+#include <type_traits>
 namespace maboroutu {
 
 template <class T> void bytereverse(T *Val, size_t Size = 1) {
@@ -64,31 +65,8 @@ constexpr T alignSize(T Value) noexcept {
   return (Value + AlignKey) & ~AlignKey;
 }
 
-// enum class RelativeEndian {
-//   Native,
-//   Reverse,
-//   Unknown,
-// };
-//
-// template <std::endian EndianV1, std::endian EndianV2> struct RelativeByteOrder {
-//   static const RelativeEndian value = RelativeEndian::Unknown;
-// };
-// template <> struct RelativeByteOrder<std::endian::little, std::endian::little> {
-//   static const RelativeEndian value = RelativeEndian::Native;
-// };
-// template <> struct RelativeByteOrder<std::endian::big, std::endian::little> {
-//   static const RelativeEndian value = RelativeEndian::Reverse;
-// };
-//
-// template <RelativeEndian RelativeEndianV, std::integral T>
-// constexpr T convertEndian(T Value) {
-//   static_assert(RelativeEndianV != RelativeEndian::Unknown,
-//                 "Can convert endianness.");
-//
-//   if constexpr (RelativeEndianV == RelativeEndian::Reverse) {
-//     return std::byteswap(Value);
-//   }
-//   return Value;
-// }
+static const bool is_mix_endian_v =
+    (std::endian::native != std::endian::little) &&
+    (std::endian::native != std::endian::big);
 
 } // namespace maboroutu
