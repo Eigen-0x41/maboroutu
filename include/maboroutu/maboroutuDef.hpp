@@ -10,7 +10,7 @@ namespace maboroutu {
 namespace {
 template <class T> class ExplicitReference : public std::reference_wrapper<T> {
 public:
-  static_assert(std::is_const_v<T>, "Value is not const.");
+  static_assert(!std::is_const_v<T>, "Value is not const.");
 
 public:
   ExplicitReference() = delete;
