@@ -35,64 +35,14 @@ template <class T> retErr convRetErr(ret<T> const &Ret) {
  * @tparam T [TODO:tparam]
  * @return [TODO:return]
  */
-template <class T> class VRef {
-private:
-protected:
-public:
-  using value_type = T;
-
-private:
-  T *Value;
-
-protected:
+template <class T> class VRef : public std::reference_wrapper<T> {
 public:
   VRef() = delete;
   VRef(VRef const &This) = delete;
   VRef(VRef &&This) = delete;
-  explicit VRef(std::reference_wrapper<value_type> Value)
-      : Value(&Value.get()) {}
+  explicit VRef(std::reference_wrapper<T> Value)
+      : std::reference_wrapper<T>::reference_wrapper(Value) {}
   ~VRef() = default;
-
-  template <class TLoc> VRef &operator=(TLoc const &Value) {
-    *Value = Value;
-    return *this;
-  }
-
-  template <class TLoc> VRef &operator=(VRef<TLoc> This) {
-    *Value = *This.Value;
-    return *this;
-  }
-
-  VRef &operator=(VRef &&This) {
-    Value = This.Value;
-    return *this;
-  };
-  VRef &operator=(T const &V) noexcept {
-    *Value = V;
-    return *this;
-  }
-
-  T &get() const noexcept { return *Value; }
-
-  operator T &() const noexcept { return *Value; }
-
-  decltype(auto) operator*() const noexcept { return **Value; }
-
-  T *operator->() const noexcept { return Value; }
-
-  template <class... ArgsT>
-  constexpr std::invoke_result_t<T &, ArgsT...>
-  operator()(ArgsT &&...Args) const {
-    return Value(std::forward<ArgsT>(Args)...);
-  }
-
-  friend bool operator==(VRef const &Lhs, VRef const &Rhs) noexcept {
-    return Lhs.Value == Rhs.Value;
-  }
-
-  friend bool operator==(VRef const &Lhs, T const &Rhs) noexcept {
-    return *Lhs.Value == Rhs;
-  }
 };
 
 } // namespace maboroutu
