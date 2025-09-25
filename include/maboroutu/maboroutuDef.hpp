@@ -1,19 +1,29 @@
 #pragma once
 
 #include "maboroutu/error.hpp"
-#include <climits>
 #include <cstddef>
 #include <expected>
 #include <type_traits>
 #include <utility>
 #include <vector>
 namespace maboroutu {
+namespace {
+template <class T> class ExplicitReference : public std::reference_wrapper<T> {
+public:
+  static_assert(std::is_const_v<T>, "Value is not const.");
+
+public:
+  ExplicitReference() = delete;
+  ExplicitReference(ExplicitReference const &This) = delete;
+  ExplicitReference(ExplicitReference &&This) = delete;
+  ExplicitReference(std::reference_wrapper<T> Value)
+      : std::reference_wrapper<T>::reference_wrapper(Value) {}
+  ~ExplicitReference() = default;
+};
+} // namespace
+
 using byte_t = typename std::byte;
 using binary_t = typename std::vector<byte_t>;
-
-static_assert(sizeof(typename binary_t::value_type) == 1,
-              "Requested binary sizeof is 1.");
-static_assert(CHAR_BIT == 8, "Requested CHAR_BIT size is 8.");
 
 using exception = Exception<ExceptionDescript, ExceptionCategoly>;
 template <class Ty = void, ExceptionConcepts Err = exception>
@@ -24,32 +34,18 @@ template <ExceptionConcepts ErrT, class... ArgsT>
 retErr makeRetErr(ArgsT &&...Args) {
   return retErr{ErrT(std::forward<ArgsT>(Args)...)};
 }
+
 template <class T> retErr convRetErr(ret<T> const &Ret) {
   return retErr{Ret.error()};
 }
 
-/**
- * @brief classによる参照型の実装。
- * CV修飾、pointer型を型Tに代入することはできません。
- *
- * @tparam T [TODO:tparam]
- * @return [TODO:return]
- */
-template <class T> class VRef : public std::reference_wrapper<T> {
-public:
-  VRef() = delete;
-  VRef(VRef const &This) = delete;
-  VRef(VRef &&This) = delete;
-  VRef(std::reference_wrapper<T> Value)
-      : std::reference_wrapper<T>::reference_wrapper(Value) {}
-  ~VRef() = default;
-};
-
+template <class T> using explicit_ref_t = ExplicitReference<T>;
 } // namespace maboroutu
 
 namespace std {
 template <class T>
-constexpr reference_wrapper<T> ref(maboroutu::VRef<T> &Value) noexcept {
+constexpr reference_wrapper<T>
+ref(maboroutu::explicit_ref_t<T> &Value) noexcept {
   return ref(Value.get());
 }
 } // namespace std
