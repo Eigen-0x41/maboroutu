@@ -20,4 +20,4 @@ template <class T> retErr convRetErr(ret<T> const &Ret) {
   return maboroutu::convRetErr<T>(Ret);
 }
 
-template <class T> using explicit_ref_t = maboroutu::explicit_ref_t<T>;
+template <class T> using mut_ref_t = maboroutu::mut_ref_t<T>;

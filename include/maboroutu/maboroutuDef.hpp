@@ -8,17 +8,17 @@
 #include <vector>
 namespace maboroutu {
 namespace {
-template <class T> class ExplicitReference : public std::reference_wrapper<T> {
+template <class T> class MutableReference : public std::reference_wrapper<T> {
 public:
   static_assert(!std::is_const_v<T>, "Value is not const.");
 
 public:
-  ExplicitReference() = delete;
-  ExplicitReference(ExplicitReference const &This) = delete;
-  ExplicitReference(ExplicitReference &&This) = delete;
-  ExplicitReference(std::reference_wrapper<T> Value)
+  MutableReference() = delete;
+  MutableReference(MutableReference const &This) = delete;
+  MutableReference(MutableReference &&This) = delete;
+  MutableReference(std::reference_wrapper<T> Value)
       : std::reference_wrapper<T>::reference_wrapper(Value) {}
-  ~ExplicitReference() = default;
+  ~MutableReference() = default;
 };
 } // namespace
 
@@ -39,13 +39,12 @@ template <class T> retErr convRetErr(ret<T> const &Ret) {
   return retErr{Ret.error()};
 }
 
-template <class T> using explicit_ref_t = ExplicitReference<T>;
+template <class T> using mut_ref_t = MutableReference<T>;
 } // namespace maboroutu
 
 namespace std {
 template <class T>
-constexpr reference_wrapper<T>
-ref(maboroutu::explicit_ref_t<T> &Value) noexcept {
+constexpr reference_wrapper<T> ref(maboroutu::mut_ref_t<T> &Value) noexcept {
   return ref(Value.get());
 }
 } // namespace std
