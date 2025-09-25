@@ -137,9 +137,18 @@ public:
       return std::bit_cast<T>(read<uint64_t, BinaryEndianV>(Pos));
     }
   }
-  template <class T> T read(size_t Pos) const = delete;
-  template <> constexpr byte_t read<byte_t>(size_t Pos) const {
-    return std::bit_cast<byte_t>(read<uint8_t, std::endian::native>(Pos));
+  template <class T> T read(size_t Pos) const {
+    return std::bit_cast<T>(read<uint8_t, std::endian::native>(Pos));
+  }
+  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  constexpr T read(std::reference_wrapper<PosT> const &Pos) const {
+    Pos.get() += sizeof(T);
+    return read<T, BinaryEndianV>(Pos);
+  }
+  template <class T, std::integral PosT>
+  constexpr T read(std::reference_wrapper<PosT> const &Pos) const {
+    Pos.get() += sizeof(T);
+    return read<T>(Pos);
   }
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
@@ -209,9 +218,20 @@ public:
       return;
     }
   }
-  template <class T> constexpr void write(size_t Pos, T Value) = delete;
-  template <> constexpr void write<byte_t>(size_t Pos, byte_t Value) {
+  template <class T> constexpr void write(size_t Pos, T Value) {
     write<uint8_t, std::endian::native>(Pos, std::bit_cast<uint8_t>(Value));
+    return;
+  }
+  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  constexpr void write(std::reference_wrapper<PosT> const &Pos, T Value) {
+    write<T, BinaryEndianV>(Pos.get(), Value);
+    Pos.get() += sizeof(T);
+    return;
+  }
+  template <class T, std::integral PosT>
+  constexpr void write(std::reference_wrapper<PosT> const &Pos, T Value) {
+    write<T>(Pos, Value);
+    Pos.get() += sizeof(T);
     return;
   }
 
