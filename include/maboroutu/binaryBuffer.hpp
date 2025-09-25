@@ -26,7 +26,7 @@ private:
   size_type Offset;
   size_type Size;
   std::unique_ptr<value_type[]> Buffer;
-  size_type BufferSize;
+  size_type CapacitySize;
 
   constexpr void rawWrite(value_type Value, size_type RawPos) {
     if (RawPos >= Size) [[unlikely]] {
@@ -44,24 +44,30 @@ private:
 
 protected:
 public:
-  BinaryBuffer() : Offset(0), Size(0), Buffer(nullptr), BufferSize(0) {};
+  BinaryBuffer() : Offset(0), Size(0), Buffer(nullptr), CapacitySize(0) {};
   BinaryBuffer(this_type const &Rhs) = delete;
   BinaryBuffer(this_type &&Rhs) = default;
+  BinaryBuffer(size_type Size, size_type Offset = 0)
+      : Offset(Offset), Size(Size),
+        Buffer(std::make_unique<value_type[]>(Size)), CapacitySize(Size) {};
   ~BinaryBuffer() {}
   this_type &operator=(this_type const &) = delete;
   this_type &operator=(this_type &&) = default;
 
+  constexpr size_type size() const noexcept { return Size; }
+  constexpr size_type capacitySize() const noexcept { return CapacitySize; }
+
   template <StreamIOConcept StIOT>
-  void load(StIOT &Stream, size_type BufferSize) {
-    load(Stream, BufferSize, Stream.fgetpos());
+  void load(StIOT &Stream, size_type CapacitySize) {
+    load(Stream, CapacitySize, Stream.fgetpos());
   }
   template <StreamIOConcept StIOT>
-  void load(StIOT &Stream, size_type BufferSize, size_type Offset) {
+  void load(StIOT &Stream, size_type CapacitySize, size_type Offset) {
     this->Offset = Offset;
-    this->BufferSize = BufferSize;
-    Buffer = std::make_unique<value_type[]>(BufferSize);
+    this->CapacitySize = CapacitySize;
+    Buffer = std::make_unique<value_type[]>(CapacitySize);
     Size = Stream.fread(Buffer.get(), sizeof(value_type),
-                        BufferSize * sizeof(value_type));
+                        CapacitySize * sizeof(value_type));
   }
   template <StreamIOConcept StIOT>
   void store(StIOT &Stream, bool IsSyncPos = false) {
@@ -69,7 +75,7 @@ public:
       Stream.fsetpos(Offset);
     }
     Size = Stream.fwrite(Buffer.get(), sizeof(value_type),
-                         BufferSize * sizeof(value_type));
+                         CapacitySize * sizeof(value_type));
   }
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
@@ -138,12 +144,13 @@ public:
       Value = std::byteswap(Value);
     }
 
-    if ((LocalPos + sizeof(T)) >= Size) [[unlikely]] {
-      throw std::range_error("is (((Pos - Offset) + sizeof(T)) >= Size).");
+    if ((LocalPos + sizeof(T)) >= CapacitySize) [[unlikely]] {
+      throw std::range_error(
+          "is (((Pos - Offset) + sizeof(T)) >= CapacitySize).");
     }
 
-    if ((LocalPos + sizeof(T)) >= BufferSize) {
-      BufferSize = Pos + sizeof(T);
+    if ((LocalPos + sizeof(T)) >= Size) {
+      Size = Pos + sizeof(T);
     }
 
     for (auto I = 0; I < sizeof(T); I++) {
@@ -194,13 +201,13 @@ public:
   }
 
   constexpr value_type &rawAccess(size_type Pos) {
-    if (Pos >= BufferSize) [[unlikely]] {
+    if (Pos >= CapacitySize) [[unlikely]] {
       throw std::out_of_range("Pos >= BufferSize");
     }
     return Buffer[Pos];
   }
   constexpr value_type const &rawAccess(size_type Pos) const {
-    if (Pos >= BufferSize) [[unlikely]] {
+    if (Pos >= CapacitySize) [[unlikely]] {
       throw std::out_of_range("Pos >= BufferSize");
     }
     return Buffer[Pos];
@@ -208,7 +215,7 @@ public:
 
   constexpr ret<std::reference_wrapper<value_type>>
   tryRawAccess(size_type Pos) noexcept {
-    if (Pos >= BufferSize) [[unlikely]] {
+    if (Pos >= CapacitySize) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
@@ -217,7 +224,7 @@ public:
   }
   constexpr ret<std::reference_wrapper<value_type const>>
   tryRawAccess(size_type Pos) const noexcept {
-    if (Pos >= BufferSize) [[unlikely]] {
+    if (Pos >= CapacitySize) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
