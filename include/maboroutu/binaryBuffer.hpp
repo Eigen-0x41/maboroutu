@@ -273,46 +273,270 @@ namespace maboroutu {
 //   }
 // };
 
-class BinaryBuffer {
+// // wrapped of std::vector<std::byte_t>
+// class BinaryBuffer {
+// private:
+// protected:
+// public:
+//   using value_type = binary_t::value_type;
+//   using size_type = int64_t;
+//
+//   static_assert(!is_mix_endian_v, "is not mix endian.");
+//
+// private:
+//   size_type Offset;
+//   binary_t Buffer;
+//
+// protected:
+// public:
+//   BinaryBuffer() : Offset(0), Buffer() {};
+//   BinaryBuffer(BinaryBuffer const &Rhs) = delete;
+//   BinaryBuffer(BinaryBuffer &&Rhs) = default;
+//   BinaryBuffer(size_type Size, size_type Offset = 0)
+//       : Offset(Offset), Buffer(Size) {};
+//   ~BinaryBuffer() {}
+//   BinaryBuffer &operator=(BinaryBuffer const &) = delete;
+//   BinaryBuffer &operator=(BinaryBuffer &&) = default;
+//
+//   constexpr size_type size() const noexcept { return Buffer.size(); }
+//   constexpr size_type capacity() const noexcept { return Buffer.capacity(); }
+//   constexpr size_type offset() const noexcept { return Offset; }
+//   constexpr void setOffset(size_type Value) noexcept { Offset = Value; }
+//
+//   template <StreamIOConcept StIOT>
+//   void load(StIOT &Stream, size_type CapacitySize) {
+//     load(Stream, CapacitySize, Stream.fgetpos());
+//   }
+//   template <StreamIOConcept StIOT>
+//   void load(StIOT &Stream, size_type CapacitySize, size_type Offset) {
+//     this->Offset = Offset;
+//     Buffer = binary_t(CapacitySize);
+//     size_type Size = Stream.fread(Buffer.data(), sizeof(value_type),
+//                                   CapacitySize * sizeof(value_type));
+//     Buffer.resize(Size * sizeof(value_type));
+//   }
+//
+//   template <StreamIOConcept StIOT>
+//   void store(StIOT &Stream, bool IsSyncOffset = true) {
+//     if (IsSyncOffset) {
+//       Stream.fsetpos(Offset);
+//     }
+//     Stream.fwrite(Buffer.data(), sizeof(value_type),
+//                   Buffer.size() * sizeof(value_type));
+//   }
+//
+//   template <std::unsigned_integral T, std::endian BinaryEndianV>
+//   T read(size_t Pos) const {
+//     if (Pos < Offset) [[unlikely]] {
+//       throw std::invalid_argument("Pos is lower than Offset.");
+//     }
+//
+//     auto RawPos = Pos - Offset;
+//     if ((RawPos + sizeof(T)) >= Buffer.size()) [[unlikely]] {
+//       throw std::range_error("is ((Pos  + sizeof(T)) >= Size).");
+//     }
+//
+//     if constexpr (sizeof(T) > 1) {
+//       T RetValue = NULL;
+//       std::memcpy(&RetValue, Buffer.data() + Pos, sizeof(T));
+//
+//       if constexpr (BinaryEndianV != std::endian::native) {
+//         return std::byteswap(RetValue);
+//       }
+//       return RetValue;
+//     }
+//
+//     return std::bit_cast<T>(Buffer[Pos]);
+//   }
+//   template <std::signed_integral T, std::endian BinaryEndianV>
+//   constexpr T read(size_t Pos) const {
+//     static_assert(sizeof(T) <= 8, "Can conversion values.");
+//     if constexpr (sizeof(T) == 1) {
+//       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 2) {
+//       return std::bit_cast<T>(read<uint16_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 4) {
+//       return std::bit_cast<T>(read<uint32_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 8) {
+//       return std::bit_cast<T>(read<uint64_t, BinaryEndianV>(Pos));
+//     }
+//   }
+//   template <std::floating_point T, std::endian BinaryEndianV>
+//   constexpr T read(size_t Pos) const {
+//     static_assert(sizeof(T) <= 8, "Can conversion values.");
+//     if constexpr (sizeof(T) == 1) {
+//       return std::bit_cast<T>(read<uint8_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 2) {
+//       return std::bit_cast<T>(read<uint16_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 4) {
+//       return std::bit_cast<T>(read<uint32_t, BinaryEndianV>(Pos));
+//     }
+//     if constexpr (sizeof(T) == 8) {
+//       return std::bit_cast<T>(read<uint64_t, BinaryEndianV>(Pos));
+//     }
+//   }
+//   template <class T> T read(size_t Pos) const {
+//     return std::bit_cast<T>(read<uint8_t, std::endian::native>(Pos));
+//   }
+//   template <class T, std::endian BinaryEndianV, std::integral PosT>
+//   constexpr T read(std::reference_wrapper<PosT> const &Pos) const {
+//     Pos.get() += sizeof(T);
+//     return read<T, BinaryEndianV>(Pos);
+//   }
+//   template <class T, std::integral PosT>
+//   constexpr T read(std::reference_wrapper<PosT> const &Pos) const {
+//     Pos.get() += sizeof(T);
+//     return read<T>(Pos);
+//   }
+//
+//   template <std::unsigned_integral T, std::endian BinaryEndianV>
+//   void write(size_t Pos, T Value) {
+//     if (Pos < Offset) [[unlikely]] {
+//       throw std::invalid_argument("Pos is lower than Offset.");
+//     }
+//     auto LocalPos = Pos - Offset;
+//
+//     if ((LocalPos + sizeof(T)) >= Buffer.size()) {
+//       Buffer.resize(Buffer.size() + sizeof(T));
+//     }
+//
+//     if constexpr (sizeof(T) > 1) {
+//       if constexpr (BinaryEndianV != std::endian::native) {
+//         Value = std::byteswap(Value);
+//       }
+//
+//       std::memcpy(Buffer.data() + LocalPos, &Value, sizeof(T));
+//       return;
+//     }
+//
+//     Buffer[Pos] = std::bit_cast<value_type>(Value);
+//   }
+//   template <std::signed_integral T, std::endian BinaryEndianV>
+//   constexpr void write(size_t Pos, T Value) {
+//     static_assert(sizeof(T) <= 8, "Can conversion values.");
+//     if constexpr (sizeof(T) == 1) {
+//       write<uint8_t, BinaryEndianV>(Pos, std::bit_cast<uint8_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 2) {
+//       write<uint16_t, BinaryEndianV>(Pos, std::bit_cast<uint16_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 4) {
+//       write<uint32_t, BinaryEndianV>(Pos, std::bit_cast<uint32_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 8) {
+//       write<uint64_t, BinaryEndianV>(Pos, std::bit_cast<uint64_t>(Value));
+//       return;
+//     }
+//   }
+//   template <std::floating_point T, std::endian BinaryEndianV>
+//   constexpr void write(size_t Pos, T Value) {
+//     static_assert(sizeof(T) <= 8, "Can conversion values.");
+//     if constexpr (sizeof(T) == 1) {
+//       write<uint8_t, BinaryEndianV>(Pos, std::bit_cast<uint8_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 2) {
+//       write<uint16_t, BinaryEndianV>(Pos, std::bit_cast<uint16_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 4) {
+//       write<uint32_t, BinaryEndianV>(Pos, std::bit_cast<uint32_t>(Value));
+//       return;
+//     }
+//     if constexpr (sizeof(T) == 8) {
+//       write<uint64_t, BinaryEndianV>(Pos, std::bit_cast<uint64_t>(Value));
+//       return;
+//     }
+//   }
+//   template <class T> constexpr void write(size_t Pos, T Value) {
+//     write<uint8_t, std::endian::native>(Pos, std::bit_cast<uint8_t>(Value));
+//     return;
+//   }
+//   template <class T, std::endian BinaryEndianV, std::integral PosT>
+//   constexpr void write(std::reference_wrapper<PosT> const &Pos, T Value) {
+//     write<T, BinaryEndianV>(Pos.get(), Value);
+//     Pos.get() += sizeof(T);
+//     return;
+//   }
+//   template <class T, std::integral PosT>
+//   constexpr void write(std::reference_wrapper<PosT> const &Pos, T Value) {
+//     write<T>(Pos, Value);
+//     Pos.get() += sizeof(T);
+//     return;
+//   }
+//
+//   constexpr value_type &at(size_type Pos) { return Buffer.at(Pos); }
+//   constexpr value_type const &at(size_type Pos) const { return
+//   Buffer.at(Pos); } constexpr ret<std::reference_wrapper<value_type>>
+//   tryAt(size_type Pos) noexcept {
+//     if (Pos >= Buffer.size()) [[unlikely]] {
+//       return makeRetErr<ret<>::error_type>(
+//           ret<>::error_type::categoly_type::Logic,
+//           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
+//     }
+//     return std::ref(Buffer[Pos]);
+//   }
+//   constexpr ret<std::reference_wrapper<value_type const>>
+//   tryRawAccess(size_type Pos) const noexcept {
+//     if (Pos >= Buffer.size()) [[unlikely]] {
+//       return makeRetErr<ret<>::error_type>(
+//           ret<>::error_type::categoly_type::Logic,
+//           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
+//     }
+//     return std::ref(Buffer[Pos]);
+//   }
+//
+//   constexpr value_type &operator[](size_type Pos) noexcept {
+//     return Buffer[Pos];
+//   }
+//   constexpr value_type const &operator[](size_type Pos) const noexcept {
+//     return Buffer[Pos];
+//   }
+//
+//   constexpr binary_t &raw() noexcept { return Buffer; }
+//   constexpr binary_t const &raw() const noexcept { return Buffer; }
+// };
+
+class BinaryBuffer : public binary_t {
 private:
 protected:
 public:
-  using value_type = binary_t::value_type;
-  using size_type = int64_t;
-
   static_assert(!is_mix_endian_v, "is not mix endian.");
+  static_assert(sizeof(value_type) == 1, "sizeof(value_type) is 1 byte.");
 
 private:
-  size_type Offset;
-  binary_t Buffer;
+  difference_type Offset;
 
 protected:
 public:
-  BinaryBuffer() : Offset(0), Buffer() {};
+  BinaryBuffer() : Offset(0), binary_t() {};
   BinaryBuffer(BinaryBuffer const &Rhs) = delete;
   BinaryBuffer(BinaryBuffer &&Rhs) = default;
   BinaryBuffer(size_type Size, size_type Offset = 0)
-      : Offset(Offset), Buffer(Size) {};
+      : Offset(Offset), binary_t(Size) {};
   ~BinaryBuffer() {}
   BinaryBuffer &operator=(BinaryBuffer const &) = delete;
   BinaryBuffer &operator=(BinaryBuffer &&) = default;
 
-  constexpr size_type size() const noexcept { return Buffer.size(); }
-  constexpr size_type capacity() const noexcept { return Buffer.capacity(); }
-  constexpr size_type offset() const noexcept { return Offset; }
-  constexpr void setOffset(size_type Value) noexcept { Offset = Value; }
+  constexpr difference_type &offset() noexcept { return Offset; }
+  constexpr difference_type const &offset() const noexcept { return Offset; }
 
-  template <StreamIOConcept StIOT>
-  void load(StIOT &Stream, size_type CapacitySize) {
-    load(Stream, CapacitySize, Stream.fgetpos());
+  template <StreamIOConcept StIOT> void load(StIOT &Stream, size_type Size) {
+    load(Stream, Size, Stream.fgetpos());
   }
   template <StreamIOConcept StIOT>
-  void load(StIOT &Stream, size_type CapacitySize, size_type Offset) {
+  void load(StIOT &Stream, size_type Size, size_type Offset) {
     this->Offset = Offset;
-    Buffer = binary_t(CapacitySize);
-    size_type Size = Stream.fread(Buffer.data(), sizeof(value_type),
-                                  CapacitySize * sizeof(value_type));
-    Buffer.resize(Size * sizeof(value_type));
+    resize(Size);
+    resize(Stream.fread(data(), sizeof(value_type), Size));
   }
 
   template <StreamIOConcept StIOT>
@@ -320,8 +544,7 @@ public:
     if (IsSyncOffset) {
       Stream.fsetpos(Offset);
     }
-    Stream.fwrite(Buffer.data(), sizeof(value_type),
-                  Buffer.size() * sizeof(value_type));
+    Stream.fwrite(data(), sizeof(value_type), size());
   }
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
@@ -331,13 +554,13 @@ public:
     }
 
     auto RawPos = Pos - Offset;
-    if ((RawPos + sizeof(T)) >= Buffer.size()) [[unlikely]] {
+    if ((RawPos + sizeof(T)) >= size()) [[unlikely]] {
       throw std::range_error("is ((Pos  + sizeof(T)) >= Size).");
     }
 
     if constexpr (sizeof(T) > 1) {
       T RetValue = NULL;
-      std::memcpy(&RetValue, Buffer.data() + Pos, sizeof(T));
+      std::memcpy(&RetValue, data() + Pos, sizeof(T));
 
       if constexpr (BinaryEndianV != std::endian::native) {
         return std::byteswap(RetValue);
@@ -345,7 +568,7 @@ public:
       return RetValue;
     }
 
-    return std::bit_cast<T>(Buffer[Pos]);
+    return std::bit_cast<T>(operator[](Pos));
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr T read(size_t Pos) const {
@@ -400,8 +623,8 @@ public:
     }
     auto LocalPos = Pos - Offset;
 
-    if ((LocalPos + sizeof(T)) >= Buffer.size()) {
-      Buffer.resize(Buffer.size() + sizeof(T));
+    if ((LocalPos + sizeof(T)) >= size()) {
+      resize(size() + sizeof(T));
     }
 
     if constexpr (sizeof(T) > 1) {
@@ -409,11 +632,11 @@ public:
         Value = std::byteswap(Value);
       }
 
-      std::memcpy(Buffer.data() + LocalPos, &Value, sizeof(T));
+      std::memcpy(data() + LocalPos, &Value, sizeof(T));
       return;
     }
 
-    Buffer[Pos] = std::bit_cast<value_type>(Value);
+    operator[](Pos) = std::bit_cast<value_type>(Value);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr void write(size_t Pos, T Value) {
@@ -472,35 +695,24 @@ public:
     return;
   }
 
-  constexpr value_type &at(size_type Pos) { return Buffer.at(Pos); }
-  constexpr value_type const &at(size_type Pos) const { return Buffer.at(Pos); }
   constexpr ret<std::reference_wrapper<value_type>>
   tryAt(size_type Pos) noexcept {
-    if (Pos >= Buffer.size()) [[unlikely]] {
+    if (Pos >= size()) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
     }
-    return std::ref(Buffer[Pos]);
+    return std::ref(operator[](Pos));
   }
   constexpr ret<std::reference_wrapper<value_type const>>
   tryRawAccess(size_type Pos) const noexcept {
-    if (Pos >= Buffer.size()) [[unlikely]] {
+    if (Pos >= size()) [[unlikely]] {
       return makeRetErr<ret<>::error_type>(
           ret<>::error_type::categoly_type::Logic,
           ret<>::error_type::descript_type::OutOfRange, "Pos >= BufferSize");
     }
-    return std::ref(Buffer[Pos]);
+    return std::ref(operator[](Pos));
   }
-
-  constexpr value_type &operator[](size_type Pos) noexcept {
-    return Buffer[Pos];
-  }
-  constexpr value_type const &operator[](size_type Pos) const noexcept {
-    return Buffer[Pos];
-  }
-
-  constexpr binary_t &raw() noexcept { return Buffer; }
-  constexpr binary_t const &raw() const noexcept { return Buffer; }
 };
+
 } // namespace maboroutu
