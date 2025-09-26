@@ -32,22 +32,24 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/Ot>)
 endif()
 
-
 project(maboroutu
     VERSION 0.0.0.0
-    DESCRIPTION "Eigen's personal C++ utility library."
+    DESCRIPTION "TODO: ADD DESCRIPTION"
     HOMEPAGE_URL ""
-    LANGUAGES CXX)
+    LANGUAGES CXX
+)
 
-### Project Dependencies
-# add_subdirectory(${PROJECT_SOURCE_DIR}/lib/${DEPEND})
+set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 
 ### Project Dependencies
 
 ### Main
-add_library(${PROJECT_NAME} STATIC
-  ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include)
+add_library(${PROJECT_NAME} STATIC ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}.hpp)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 # target_compile_options(${PROJECT_NAME} PRIVATE -pthread)
 
@@ -58,6 +60,21 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
 
+### select install
+install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Export
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+#  PUBLIC_HEADER DESTINATION ${PROJECT_SOURCE_DIR}/include
+)
+
+### create ${PROJECT_NAME}Config.cmake
+install(EXPORT ${PROJECT_NAME}Export
+  FILE ${PROJECT_NAME}Config.cmake
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION lib/cmake/${PROJECT_NAME}/
+)
 
 # enable_testing()
 # ### Test Dependencies
