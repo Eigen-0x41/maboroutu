@@ -2,7 +2,7 @@ vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO MicrosoftDocs/vcpkg-docs
+    REPO Eigen-0x41/maboroutu
     REF "${VERSION}"
     SHA512 0 # This is a temporary value. We will modify this value in the next section.
     HEAD_REF maboroutu
