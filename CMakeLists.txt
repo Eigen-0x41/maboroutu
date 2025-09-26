@@ -33,7 +33,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.0.5
+    VERSION 0.0.0.6
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -63,29 +63,29 @@ target_compile_definitions(${TargetName} PRIVATE ${TargetName}_PRIVATE)
 
 ### install library select
 # set_target_properties(${TargetName} PROPERTIES PUBLIC_HEADER "lib1.h")
-# install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
-#   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-#   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-# )
+install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>/include/${TargetName}
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/include/maboroutu
 )
-# install(EXPORT ${TargetName}Targets
-#   FILE ${TargetName}Targets.cmake
-#   NAMESPACE ${TargetName}::
-#   DESTINATION share/${TargetName}
-# )
-# file(WRITE
-#   "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
-#   "include(CMakeFindDependencyMacro)\n"
-#   # "find_dependency(${lib} CONFIG REQUIRED)\n"
-#   "include(\"\${CMAKE_CURRENT_LIST_DIR}/${TargetName}Targets.cmake\")\n"
-# )
-# install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
-#   DESTINATION share/${TargetName}
-# )
+install(EXPORT ${TargetName}Targets
+  FILE ${TargetName}Targets.cmake
+  NAMESPACE ${TargetName}::
+  DESTINATION share/${TargetName}
+)
+file(WRITE
+  "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
+  "include(CMakeFindDependencyMacro)\n"
+  # "find_dependency(${lib} CONFIG REQUIRED)\n"
+  "include(\"\${CMAKE_CURRENT_LIST_DIR}/${TargetName}Targets.cmake\")\n"
+)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
+  DESTINATION share/${TargetName}
+)
 
 # enable_testing()
 # ### Test Dependencies
