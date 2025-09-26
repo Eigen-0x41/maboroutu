@@ -39,39 +39,51 @@ project(maboroutu
     LANGUAGES CXX
 )
 
-### Project Dependencies
+set(TargetName maboroutu)
+
+### Dependencies
+# find_package(${LIB} CONFIG REQUIRED)
 
 ### Main
-add_library(${PROJECT_NAME} STATIC ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC
+add_library(${TargetName} STATIC ${PROJECT_SOURCE_DIR}/src/${TargetName}.cpp)
+target_include_directories(${TargetName} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
-# target_compile_options(${PROJECT_NAME} PRIVATE -pthread)
+target_compile_features(${TargetName} PUBLIC cxx_std_23)
+# target_compile_options(${TargetName} PRIVATE -pthread)
 
-### Dependencies
-# target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB})
+### link Dependencies
+# target_link_libraries(${TargetName} PRIVATE ${LIB})
 
 ### Transparency
-target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
+target_compile_definitions(${TargetName} PUBLIC ${TargetName}_PUBLIC)
+target_compile_definitions(${TargetName} PRIVATE ${TargetName}_PRIVATE)
 
 ### install library select
-# set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "lib1.h")
-install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets
+# set_target_properties(${TargetName} PROPERTIES PUBLIC_HEADER "lib1.h")
+install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+install(DIRECTORY include
+  DESTINATION include
 )
-install(EXPORT ${PROJECT_NAME}Targets
-  NAMESPACE mylib::
-  FILE mylibTargets.cmake
-  DESTINATION cmake
+install(EXPORT ${TargetName}Targets
+  FILE ${TargetName}Targets.cmake
+  NAMESPACE ${TargetName}::
+  DESTINATION share/${TargetName}
+)
+file(WRITE
+  "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
+  "include(CMakeFindDependencyMacro)\n"
+  # "find_dependency(${lib} CONFIG REQUIRED)\n"
+  "include(\"\${CMAKE_CURRENT_LIST_DIR}/${TargetName}Targets.cmake\")\n"
+)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
+  DESTINATION share/${TargetName}
 )
 
 # enable_testing()
