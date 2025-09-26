@@ -1,13 +1,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Eigen-0x41/maboroutu
-    REF "${VERSION}" # 0.0.0.3
+    REF "${VERSION}" # 0.0.0.4
     SHA512 0
     HEAD_REF maboroutu
-)
-
-vcpkg_cmake_configure(
-    SOURCE_PATH "${SOURCE_PATH}"
 )
 
 install(DIRECTORY "${SOURCE_PATH}/include/maboroutu"  DESTINATION "${CURRENT_PACKAGES_DIR}/include/maboroutu")
