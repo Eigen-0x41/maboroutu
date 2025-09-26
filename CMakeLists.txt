@@ -33,7 +33,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.0.6
+    VERSION 0.0.0.7
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -70,7 +70,7 @@ install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>/include/${TargetName}
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/include/maboroutu
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/maboroutu
 )
 install(EXPORT ${TargetName}Targets
   FILE ${TargetName}Targets.cmake
