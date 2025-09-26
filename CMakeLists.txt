@@ -57,12 +57,21 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
 
-### select install
-install(TARGETS ${PROJECT_NAME}
+### install library select
+# set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "lib1.h")
+install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(EXPORT ${PROJECT_NAME}Targets
+  NAMESPACE mylib::
+  FILE mylibTargets.cmake
+  DESTINATION cmake
 )
 
 # enable_testing()
