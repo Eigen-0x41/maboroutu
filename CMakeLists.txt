@@ -39,6 +39,8 @@ project(maboroutu
     LANGUAGES CXX
 )
 
+include(GNUInstallDirs)
+
 set(TargetName maboroutu)
 
 ### Dependencies
@@ -64,8 +66,9 @@ target_compile_definitions(${TargetName} PRIVATE ${TargetName}_PRIVATE)
 # set_target_properties(${TargetName} PROPERTIES PUBLIC_HEADER "lib1.h")
 install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  # ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  # RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  # PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(DIRECTORY include
   DESTINATION include
