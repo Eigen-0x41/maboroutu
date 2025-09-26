@@ -3,8 +3,8 @@ vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Eigen-0x41/maboroutu
-    REF "${VERSION}" # 0.0.0.0
-    SHA512 5b595f3a2271a68563f706046d919225514facad21072a80b712b976ee61e5f4b785d542995a29b2b008a663e564826c214c0b326331d49f326d0e2da3b514a2
+    REF "${VERSION}" # 0.0.0.1
+    SHA512 0
     HEAD_REF maboroutu
 )
 
