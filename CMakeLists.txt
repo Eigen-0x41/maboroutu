@@ -49,7 +49,7 @@ set(TargetName maboroutu)
 ### Main
 add_library(${TargetName} STATIC ${PROJECT_SOURCE_DIR}/src/${TargetName}.cpp)
 target_include_directories(${TargetName} PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>/include
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>include
 )
 target_compile_features(${TargetName} PUBLIC cxx_std_23)
 # target_compile_options(${TargetName} PRIVATE -pthread)
@@ -69,7 +69,7 @@ install(TARGETS ${TargetName} EXPORT ${TargetName}Targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>/include/${TargetName}
+install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>include/${TargetName}
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(EXPORT ${TargetName}Targets
