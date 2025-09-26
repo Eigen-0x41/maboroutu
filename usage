@@ -1,0 +1,4 @@
+maboroutu provides CMake targets:
+
+find_package(maboroutu CONFIG REQUIRED)
+target_link_libraries(main PRIVATE maboroutu::maboroutu)

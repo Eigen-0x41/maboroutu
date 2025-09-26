@@ -34,7 +34,7 @@ endif()
 
 project(maboroutu
     VERSION 0.0.0.0
-    DESCRIPTION "TODO: ADD DESCRIPTION"
+    DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
 )
@@ -43,11 +43,7 @@ project(maboroutu
 
 ### Main
 add_library(${PROJECT_NAME} STATIC ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}.hpp)
-target_include_directories(${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-)
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 # target_compile_options(${PROJECT_NAME} PRIVATE -pthread)
 
@@ -57,31 +53,6 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 ### Transparency
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
-
-### config for ${PROJECT_NAME}<Targets|Config>.cmake
-install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Export
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
-
-### Targets.cmake
-install(EXPORT ${PROJECT_NAME}Export
-  FILE ${PROJECT_NAME}Targets.cmake
-  NAMESPACE ${PROJECT_NAME}::
-  DESTINATION cmake
-)
-
-### Config.cmake
-include(CMakePackageConfigHelpers)
-configure_package_config_file(Config.cmake.in
-  ${PROJECT_NAME}Config.cmake
-  INSTALL_DESTINATION cmake
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-)
 
 
 # enable_testing()

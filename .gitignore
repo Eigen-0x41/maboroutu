@@ -20,3 +20,9 @@
 !/.clang-tidy
 !/CMakeLists.txt
 !/LICENSE
+
+#-vcpkg
+!/portfile.cmake
+!/usage
+!/vcpkg-configuration.json
+!/vcpkg.json
