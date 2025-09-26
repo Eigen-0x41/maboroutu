@@ -58,22 +58,27 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
 
-### select install
+### config for install
 install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Export
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include
-  PUBLIC_HEADER DESTINATION include
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}           # SHARED
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}           # STATIC
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}           # MODULE
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # Header
 )
 
-### create ${PROJECT_NAME}Config.cmake
+### create ${PROJECT_NAME}Targets.cmake
 install(EXPORT ${PROJECT_NAME}Export
-  FILE ${PROJECT_NAME}Config.cmake
+  FILE ${PROJECT_NAME}Targets.cmake
   NAMESPACE ${PROJECT_NAME}::
-  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}
-  # DESTINATION lib/cmake/${PROJECT_NAME}/
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
+
+# ### create ${PROJECT_NAME}Config.cmake
+# install(EXPORT ${PROJECT_NAME}Export
+#   FILE ${PROJECT_NAME}Config.cmake
+#   NAMESPACE ${PROJECT_NAME}::
+#   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+# )
 
 # enable_testing()
 # ### Test Dependencies
