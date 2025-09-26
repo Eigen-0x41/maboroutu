@@ -33,7 +33,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.0.10
+    VERSION 0.0.0.11
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -49,7 +49,8 @@ set(TargetName maboroutu)
 ### Main
 add_library(${TargetName} STATIC ${PROJECT_SOURCE_DIR}/src/${TargetName}.cpp)
 target_include_directories(${TargetName} PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>include
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_features(${TargetName} PUBLIC cxx_std_23)
 # target_compile_options(${TargetName} PRIVATE -pthread)
