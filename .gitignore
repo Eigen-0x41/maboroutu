@@ -7,6 +7,7 @@
 !/.gitmodules
 
 #-allow list
+#--cxx
 !/include/
 !/include/*
 !/lib/
@@ -21,7 +22,7 @@
 !/CMakeLists.txt
 !/LICENSE
 
-#-vcpkg
+#--vcpkg
 !/portfile.cmake
 !/usage
 !/vcpkg-configuration.json
