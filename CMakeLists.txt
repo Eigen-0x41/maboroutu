@@ -39,8 +39,6 @@ project(maboroutu
     LANGUAGES CXX
 )
 
-set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
-
 ### Project Dependencies
 
 ### Main
