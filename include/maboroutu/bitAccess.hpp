@@ -16,10 +16,17 @@ public:
   using value_type = T;
 
   template <size_t LBeginV, size_t SizeV> struct Key {
+    static_assert(LBeginV != 0, "LBeginV is not 0.");
+    static_assert(SizeV != 0, "SizeV is not 0.");
     static constexpr size_t Size = SizeV;
     static constexpr size_t Begin = LBeginV;
     static constexpr size_t End = Begin + Size;
   };
+
+  template <size_t LBeginV, size_t SizeV>
+  using main_key_t = Key<LBeginV, SizeV>;
+  template <BitAccessEntryConcepts ForwardKeyT, size_t SizeV>
+  using key_t = Key<ForwardKeyT::End, SizeV>;
 
 private:
   template <size_t LBeginV, size_t SizeV> struct StaticAsserter {
@@ -31,17 +38,7 @@ private:
                   "Requested field is over than base type bit size.");
   };
 
-  template <size_t LBeginV, size_t SizeV>
-  struct KeyMakerBase : StaticAsserter<LBeginV, SizeV> {
-    using value_type = Key<LBeginV, SizeV>;
-  };
-
 public:
-  template <size_t LBeginV, size_t SizeV>
-  struct KeyMaker : public KeyMakerBase<LBeginV, SizeV> {};
-  template <BitAccessEntryConcepts ForwardKeyT, size_t SizeV>
-  struct DependedKeyMaker : public KeyMakerBase<ForwardKeyT::End, SizeV> {};
-
   template <size_t LBeginV, size_t SizeV>
   class Accesser : StaticAsserter<LBeginV, SizeV> {
   public:
