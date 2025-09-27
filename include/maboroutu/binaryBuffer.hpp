@@ -566,9 +566,9 @@ public:
         return std::byteswap(RetValue);
       }
       return RetValue;
+    } else {
+      return std::bit_cast<T>(operator[](Pos));
     }
-
-    return std::bit_cast<T>(operator[](Pos));
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr T read(size_t Pos) const {
@@ -634,9 +634,9 @@ public:
 
       std::memcpy(data() + LocalPos, &Value, sizeof(T));
       return;
+    } else {
+      operator[](Pos) = std::bit_cast<value_type>(Value);
     }
-
-    operator[](Pos) = std::bit_cast<value_type>(Value);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr void write(size_t Pos, T Value) {
