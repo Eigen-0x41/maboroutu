@@ -1,115 +1,111 @@
 #pragma once
 
+#include <bit>
+#include <climits>
 #include <concepts>
 namespace maboroutu {
 
 template <class T>
 concept BitAccessEntryConcepts =
     std::same_as<decltype(T::Size), const size_t> &&
-    std::same_as<decltype(T::Begin), const size_t> &&
-    std::same_as<decltype(T::End), const size_t>;
+    std::same_as<decltype(T::Begin), const size_t>;
 
 template <std::unsigned_integral T> class BitAccess {
-public:
-  using this_type = BitAccess<T>;
-
-  using value_type = T;
-
-  template <size_t LBeginV, size_t SizeV> struct Key {
-    static_assert(SizeV != 0, "SizeV is not 0.");
-    static constexpr size_t Size = SizeV;
-    static constexpr size_t Begin = LBeginV;
-    static constexpr size_t End = Begin + Size;
-  };
-
-  template <size_t LBeginV, size_t SizeV>
-  using main_key_t = Key<LBeginV, SizeV>;
-  template <BitAccessEntryConcepts ForwardKeyT, size_t SizeV>
-  using key_t = Key<ForwardKeyT::End, SizeV>;
-
 private:
-  template <size_t LBeginV, size_t SizeV> struct StaticAsserter {
-    static constexpr size_t ByteBitSize = 8;
-    static constexpr size_t ValueBitSize = sizeof(value_type) * ByteBitSize;
+  static constexpr size_t ValueBitSize = sizeof(T) * CHAR_BIT;
 
+  template <size_t LBeginV, size_t SizeV> struct StaticAsserter {
     static_assert(SizeV > 0, "Requested field size is > 0.");
     static_assert((LBeginV + SizeV) <= ValueBitSize,
                   "Requested field is over than base type bit size.");
   };
 
+protected:
 public:
+  using value_type = T;
+
+  template <size_t LBeginV, size_t SizeV> struct Key {
+    static constexpr size_t Begin = LBeginV;
+    static constexpr size_t Size = SizeV;
+  };
+
+  template <size_t LBeginV, size_t SizeV>
+  using main_key_t = Key<LBeginV, SizeV>;
+  template <BitAccessEntryConcepts ForwardKeyT, size_t SizeV>
+  using key_t = Key<ForwardKeyT::Begin + ForwardKeyT::Size, SizeV>;
+
   template <size_t LBeginV, size_t SizeV>
   class Accesser : StaticAsserter<LBeginV, SizeV> {
   public:
-    using dependency_type = this_type;
-    using this_type = Accesser<LBeginV, SizeV>;
+    using dependency_type = BitAccess;
 
-    static constexpr size_t ValueBitSize =
-        StaticAsserter<LBeginV, SizeV>::ValueBitSize;
-
-    static_assert(SizeV > 0, "Requested field size is > 0.");
-    static_assert((LBeginV + SizeV) <= ValueBitSize,
-                  "Requested field fits the bit size of the base type.");
-
-    static constexpr size_t Size = SizeV;
     static constexpr size_t Begin = LBeginV;
-    static constexpr size_t End = Begin + Size;
+    static constexpr size_t Size = SizeV;
 
   private:
+    friend BitAccess;
     static constexpr value_type FilterBase = 0x1 << (Size - 0x1);
     static constexpr value_type Filter = FilterBase | (FilterBase - 0x1);
-    static constexpr size_t ShiftSize = ValueBitSize - End;
-    static constexpr value_type LShiftedFilter = Filter << ShiftSize;
+    static constexpr size_t ShiftSize = ValueBitSize - (Begin + Size);
 
-    value_type &vValue() noexcept {
-      return *reinterpret_cast<value_type *>(this);
-    }
-    value_type const &vValue() const noexcept {
-      return *reinterpret_cast<value_type const *>(this);
-    }
+    value_type &Container;
+
+    Accesser(value_type &Value) : Container(Value) {}
 
   public:
     Accesser() = delete;
     Accesser(Accesser const &) = delete;
     Accesser(Accesser &&) = delete;
 
-    // Accesser(value_type &V) { this = reinterpret_cast<this_type *>(&V); }
+    Accesser &operator=(value_type Value) {
+      Value = std::rotl<value_type>(Value & Filter, ShiftSize);
 
-    this_type &operator=(value_type Value) {
-      Value = (Value << ShiftSize) & LShiftedFilter;
-
-      value_type &Container = vValue();
-      Container = Container & ~LShiftedFilter;
+      Container = Container & ~std::rotl<value_type>(Filter, ShiftSize);
 
       Container = Container | Value;
       return *this;
     }
-    this_type &operator=(value_type Value) const = delete;
+    Accesser &operator=(value_type Value) const = delete;
 
     operator value_type() const noexcept {
-      value_type Container = vValue();
-      return (Container >> ShiftSize) & Filter;
+      return std::rotr(Container, ShiftSize) & Filter;
     }
   };
 
 private:
   value_type Container;
 
+protected:
 public:
+  BitAccess() = default;
+  template <class TLoc>
+  BitAccess(BitAccess<TLoc> const &Value) : Container(Value.Container) {}
+  BitAccess(BitAccess &&Value) = default;
+  BitAccess(value_type Value) : Container(Value) {}
+
+  template <class TLoc>
+  BitAccess &operator=(BitAccess<TLoc> const &Value) noexcept {
+    Container = Value.Container;
+    return *this;
+  }
+  BitAccess &operator=(BitAccess &&) noexcept = default;
+  BitAccess &operator=(value_type Value) noexcept {
+    Container = Value;
+    return *this;
+  }
+
+  value_type &value() noexcept { return Container; }
+  value_type const &value() const noexcept { return Container; }
+
   template <BitAccessEntryConcepts LocalT>
-  Accesser<LocalT::Begin, LocalT::Size> &operator()(LocalT Key) noexcept {
-    return *reinterpret_cast<Accesser<LocalT::Begin, LocalT::Size> *>(
-        &Container);
+  Accesser<LocalT::Begin, LocalT::Size> operator()(LocalT Key) noexcept {
+    return Accesser<LocalT::Begin, LocalT::Size>(Container);
   }
 
   template <BitAccessEntryConcepts LocalT>
   Accesser<LocalT::Begin, LocalT::Size> const &
   operator()(LocalT Key) const noexcept {
-    return *reinterpret_cast<Accesser<LocalT::Begin, LocalT::Size> *>(
-        &Container);
+    return Accesser<LocalT::Begin, LocalT::Size>(Container);
   }
-
-  value_type &operator*() noexcept { return Container; }
-  value_type const &operator*() const noexcept { return Container; }
 };
 } // namespace maboroutu
