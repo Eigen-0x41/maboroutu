@@ -58,11 +58,18 @@ template <class T> void bytereverse(T *Val, size_t Size = 1) {
 // }
 
 template <std::integral T, size_t Alignment>
+constexpr T alignSizeWithTruncation(T Value) noexcept {
+  static_assert(std::has_single_bit(Alignment),
+                "alignSize(): Alignment is Powers of 2.");
+  constexpr size_t AlignKey = Alignment - 1;
+  return Value & ~AlignKey;
+}
+template <std::integral T, size_t Alignment>
 constexpr T alignSize(T Value) noexcept {
   static_assert(std::has_single_bit(Alignment),
                 "alignSize(): Alignment is Powers of 2.");
   constexpr size_t AlignKey = Alignment - 1;
-  return (Value + AlignKey) & ~AlignKey;
+  return alignSizeWithTruncation<T, Alignment>(Value + AlignKey);
 }
 
 static const bool is_mix_endian_v =
