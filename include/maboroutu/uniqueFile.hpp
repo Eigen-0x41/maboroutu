@@ -82,7 +82,7 @@ public:
     size_t Current = ftell();
     fseek(0L, OffsetFlag::End);
     size_t const RetValue = ftell();
-    fseek(Current, OffsetFlag::End);
+    fseek(Current, OffsetFlag::Begin);
     return RetValue;
   }
 
