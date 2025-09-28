@@ -553,22 +553,21 @@ public:
       throw std::invalid_argument("Pos is lower than Offset.");
     }
 
-    auto RawPos = Pos - Offset;
-    if ((RawPos + sizeof(T)) >= size()) [[unlikely]] {
+    size_type const LocalPos = Pos - Offset;
+    if ((LocalPos + sizeof(T)) >= size()) [[unlikely]] {
       throw std::range_error("is ((Pos  + sizeof(T)) >= Size).");
     }
 
-    if constexpr (sizeof(T) > 1) {
-      T RetValue = NULL;
-      std::memcpy(&RetValue, data() + Pos, sizeof(T));
-
-      if constexpr (BinaryEndianV != std::endian::native) {
-        return std::byteswap(RetValue);
-      }
-      return RetValue;
-    } else {
+    if constexpr (sizeof(T) == 1) {
       return std::bit_cast<T>(operator[](Pos));
     }
+    T RetValue = NULL;
+    std::memcpy(&RetValue, data() + LocalPos, sizeof(T));
+    if constexpr (BinaryEndianV != std::endian::native) {
+      return std::byteswap(RetValue);
+    }
+
+    return RetValue;
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr T read(size_t Pos) const {
@@ -621,22 +620,21 @@ public:
     if (Pos < Offset) [[unlikely]] {
       throw std::invalid_argument("Pos is lower than Offset.");
     }
-    auto LocalPos = Pos - Offset;
+    size_type const LocalPos = Pos - Offset;
 
     if ((LocalPos + sizeof(T)) >= size()) {
       resize(size() + sizeof(T));
     }
 
-    if constexpr (sizeof(T) > 1) {
-      if constexpr (BinaryEndianV != std::endian::native) {
-        Value = std::byteswap(Value);
-      }
-
-      std::memcpy(data() + LocalPos, &Value, sizeof(T));
-      return;
-    } else {
+    if constexpr (sizeof(T) == 1) {
       operator[](Pos) = std::bit_cast<value_type>(Value);
     }
+    if constexpr (BinaryEndianV != std::endian::native) {
+      Value = std::byteswap(Value);
+    }
+    std::memcpy(data() + LocalPos, &Value, sizeof(T));
+
+    return;
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr void write(size_t Pos, T Value) {
