@@ -78,7 +78,8 @@ private:
       return std::bit_cast<T>(readCore<uint64_t, BinaryEndianV>(Pos));
     }
   }
-  template <std::integral T> constexpr T readCaster(size_t Pos) const {
+  template <typename T> constexpr T readCaster(size_t Pos) const {
+    static_assert(sizeof(T) == 1, "Is 1Byte.");
     return std::bit_cast<T>(readCore<uint8_t, std::endian::native>(Pos));
   }
 
@@ -144,7 +145,8 @@ private:
       return;
     }
   }
-  template <std::integral T> constexpr void writeCaster(size_t Pos, T Value) {
+  template <typename T> constexpr void writeCaster(size_t Pos, T Value) {
+    static_assert(sizeof(T) == 1, "Is 1Byte.");
     writeCore<uint8_t, std::endian::little>(Pos, std::bit_cast<uint8_t>(Value));
     return;
   }
@@ -181,44 +183,44 @@ public:
     Stream.fwrite(data(), sizeof(value_type), size());
   }
 
-  template <class T, std::integral PosT>
+  template <typename T, std::integral PosT>
   constexpr T read(std::reference_wrapper<PosT> Pos) const {
     T RetValue = readCaster<T>(Pos.get());
     Pos.get() += sizeof(T);
     return RetValue;
   }
-  template <class T, std::integral PosT> T read(PosT Pos) const {
+  template <typename T, std::integral PosT> T read(PosT Pos) const {
     return readCaster<T>(Pos);
   }
-  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  template <typename T, std::endian BinaryEndianV, std::integral PosT>
   constexpr T read(std::reference_wrapper<PosT> Pos) const {
     T RetValue = readCaster<T, BinaryEndianV>(Pos.get());
     Pos.get() += sizeof(T);
     return RetValue;
   }
-  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  template <typename T, std::endian BinaryEndianV, std::integral PosT>
   T read(PosT Pos) const {
     return readCaster<T, BinaryEndianV>(Pos);
   }
 
-  template <class T, std::integral PosT>
+  template <typename T, std::integral PosT>
   constexpr void write(std::reference_wrapper<PosT> Pos, T Value) {
     writeCaster<T>(Pos.get(), Value);
     Pos.get() += sizeof(T);
     return;
   }
-  template <class T, std::integral PosT>
+  template <typename T, std::integral PosT>
   constexpr void write(PosT Pos, T Value) {
     writeCaster<T>(Pos, Value);
     return;
   }
-  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  template <typename T, std::endian BinaryEndianV, std::integral PosT>
   constexpr void write(std::reference_wrapper<PosT> const Pos, T Value) {
     writeCaster<T, BinaryEndianV>(Pos.get(), Value);
     Pos.get() += sizeof(T);
     return;
   }
-  template <class T, std::endian BinaryEndianV, std::integral PosT>
+  template <typename T, std::endian BinaryEndianV, std::integral PosT>
   constexpr void write(PosT Pos, T Value) {
     writeCaster<T, BinaryEndianV>(Pos, Value);
     return;
