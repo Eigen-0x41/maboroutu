@@ -46,6 +46,11 @@ private:
 
     return RetValue;
   }
+
+  template <std::unsigned_integral T, std::endian BinaryEndianV>
+  constexpr T readCaster(size_t Pos) const {
+    return readCore<uint8_t, BinaryEndianV>(Pos);
+  }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr T readCaster(size_t Pos) const {
     static_assert(sizeof(T) <= 8, "Can conversion values.");
@@ -103,6 +108,12 @@ private:
     }
     std::memcpy(data() + Pos, &Value, sizeof(T));
 
+    return;
+  }
+
+  template <std::unsigned_integral T, std::endian BinaryEndianV>
+  constexpr void writeCaster(size_t Pos, T Value) {
+    writeCore<uint8_t, BinaryEndianV>(Pos, Value);
     return;
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
