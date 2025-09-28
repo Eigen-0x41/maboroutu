@@ -49,7 +49,7 @@ private:
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
   constexpr T readCaster(size_t Pos) const {
-    return readCore<uint8_t, BinaryEndianV>(Pos);
+    return readCore<T, BinaryEndianV>(Pos);
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
   constexpr T readCaster(size_t Pos) const {
@@ -113,7 +113,7 @@ private:
 
   template <std::unsigned_integral T, std::endian BinaryEndianV>
   constexpr void writeCaster(size_t Pos, T Value) {
-    writeCore<uint8_t, BinaryEndianV>(Pos, Value);
+    writeCore<T, BinaryEndianV>(Pos, Value);
     return;
   }
   template <std::signed_integral T, std::endian BinaryEndianV>
