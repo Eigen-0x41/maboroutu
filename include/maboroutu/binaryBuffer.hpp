@@ -31,8 +31,8 @@ private:
     }
 
     Pos -= Offset;
-    if ((Pos + sizeof(T)) >= size()) [[unlikely]] {
-      throw std::range_error("is ((Pos  + sizeof(T)) >= Size).");
+    if ((Pos + sizeof(T)) > size()) [[unlikely]] {
+      throw std::range_error("is ((Pos  + sizeof(T)) > Size).");
     }
 
     if constexpr (sizeof(T) == 1) {
@@ -96,8 +96,8 @@ private:
 
     Pos -= Offset;
 
-    if ((Pos + sizeof(T)) >= size()) {
-      resize(size() + sizeof(T));
+    if ((Pos + sizeof(T)) > size()) {
+      resize(Pos + sizeof(T));
     }
 
     if constexpr (sizeof(T) == 1) {
