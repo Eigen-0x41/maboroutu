@@ -102,6 +102,7 @@ private:
 
     if constexpr (sizeof(T) == 1) {
       operator[](Pos) = std::bit_cast<value_type>(Value);
+      return;
     }
     if constexpr (BinaryEndianV != std::endian::native) {
       Value = std::byteswap(Value);
