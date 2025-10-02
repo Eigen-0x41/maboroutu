@@ -13,15 +13,13 @@ namespace maboroutu {
 namespace {
 // [[SlotMapKey]]
 template <class DependT> class SlotMapKey {
-private:
-protected:
 public:
-  using this_type = SlotMapKey;
-
   using size_type = size_t;
 
   static constexpr size_type NPos = -1;
 
+private:
+protected:
 private:
   friend DependT;
 
@@ -32,19 +30,17 @@ private:
 protected:
 public:
   SlotMapKey() : Key(NPos) {}
-  SlotMapKey(this_type const &Rhs) : Key(Rhs.Key) {}
-  SlotMapKey(this_type &&Rhs) : Key(Rhs.Key) {}
+  SlotMapKey(SlotMapKey const &Rhs) : Key(Rhs.Key) {}
+  SlotMapKey(SlotMapKey &&Rhs) : Key(Rhs.Key) {}
   ~SlotMapKey() = default;
-  this_type &operator=(this_type const &) = default;
-  this_type &operator=(this_type &&) = default;
+  SlotMapKey &operator=(SlotMapKey const &) = default;
+  SlotMapKey &operator=(SlotMapKey &&) = default;
 
   constexpr operator bool() const noexcept { return Key != NPos; }
 };
 
-template <class DependT, class T> class SlotMapContiner {
+template <class DependT, class T> class SlotMapNode {
 public:
-  using this_type = SlotMapContiner<DependT, T>;
-
   using value_type = T;
   using key_type = SlotMapKey<DependT>;
 
@@ -60,18 +56,17 @@ private:
 
 protected:
 public:
-  SlotMapContiner() : IsEnable(false), Next(), Value() {}
-  SlotMapContiner(this_type const &Rhs)
+  SlotMapNode() : IsEnable(false), Next(), Value() {}
+  SlotMapNode(SlotMapNode const &Rhs)
       : IsEnable(Rhs.IsEnable), Next(Rhs.Next), Value(Rhs.Value) {}
-  SlotMapContiner(this_type &&Rhs)
+  SlotMapNode(SlotMapNode &&Rhs)
       : IsEnable(Rhs.IsEnable), Next(Rhs.Next), Value(std::move(Rhs.Value)) {}
-  SlotMapContiner(value_type const &Value)
-      : IsEnable(true), Next(), Value(Value) {}
+  SlotMapNode(value_type const &Value) : IsEnable(true), Next(), Value(Value) {}
   template <class... ArgsT>
-  SlotMapContiner(ArgsT &&...Args) : IsEnable(true), Next(), Value() {
+  SlotMapNode(ArgsT &&...Args) : IsEnable(true), Next(), Value() {
     std::construct_at(&Value, std::forward<ArgsT>(Args)...);
   }
-  ~SlotMapContiner() {
+  ~SlotMapNode() {
     if (IsEnable) {
       destroy();
     }
@@ -108,18 +103,24 @@ public:
 
 } // namespace
 
-template <class T> class SlotMap {
-public:
-  using this_type = SlotMap<T>;
+struct SlotMapContinerTraits {
+  template <class T> using value_type = typename std::deque<T>;
+};
 
-  using key_type = SlotMapKey<this_type>;
+template <class T, class SlotMapContinerTraits> class SlotMap {
+public:
+  template <class LocT>
+  using continer_traits =
+      typename SlotMapContinerTraits::template value_type<LocT>;
+
+  using key_type = SlotMapKey<SlotMap>;
   using value_type = T;
   using size_type = size_t;
 
 protected:
 private:
-  using continer_value = SlotMapContiner<this_type, T>;
-  using continer = typename std::deque<continer_value>;
+  using node_type = SlotMapNode<SlotMap, T>;
+  using continer = continer_traits<node_type>;
 
 private:
   continer Continer;
@@ -132,11 +133,11 @@ protected:
 public:
   SlotMap()
       : Continer(), NextConstructed(), NextDestroyed(), Size(0), FreeSize(0) {}
-  SlotMap(this_type const &Rhs) = default;
-  SlotMap(this_type &&Rhs) = default;
+  SlotMap(SlotMap const &Rhs) = default;
+  SlotMap(SlotMap &&Rhs) = default;
   ~SlotMap() = default;
-  this_type &operator=(this_type const &) = default;
-  this_type &operator=(this_type &&) = default;
+  SlotMap &operator=(SlotMap const &) = default;
+  SlotMap &operator=(SlotMap &&) = default;
 
   bool contains(key_type const &Key) const {
     if (!Key) [[unlikely]] {
@@ -194,7 +195,7 @@ public:
   key_type insert(value_type const &Value) {
     if (NextDestroyed) {
       key_type ConstructTarget = NextDestroyed;
-      continer_value &Target = Continer[ConstructTarget.Key];
+      node_type &Target = Continer[ConstructTarget.Key];
 
       Target.construct(Value);
       NextDestroyed = Target.next();
@@ -208,7 +209,7 @@ public:
     }
 
     key_type ConstructTarget(Continer.size());
-    Continer.push_back(continer_value(Value));
+    Continer.push_back(node_type(Value));
     NextConstructed = ConstructTarget;
 
     ++Size;
@@ -217,7 +218,7 @@ public:
   template <class... ArgsT> key_type emplace(ArgsT &&...Args) {
     if (NextDestroyed) {
       key_type ConstructTarget = NextDestroyed;
-      continer_value &Target = Continer[ConstructTarget.Key];
+      node_type &Target = Continer[ConstructTarget.Key];
 
       Target.construct(std::forward<ArgsT>(Args)...);
       NextDestroyed = Target.next();
@@ -242,7 +243,7 @@ public:
       throw std::out_of_range("Key is not contains.");
     }
 
-    continer_value &Target = Continer[Key.Key];
+    node_type &Target = Continer[Key.Key];
 
     Target.destroy();
     NextConstructed = Target.next();

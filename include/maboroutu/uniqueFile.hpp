@@ -12,12 +12,10 @@ namespace maboroutu {
 // cstdioなのでSTLであるが、namespaceがstdではないため
 // wrapのグローバルで記述します。
 class UniqueFile {
-private:
+public:
   struct Deletor {
     void operator()(FILE *Val) { ::fclose(Val); }
   };
-
-public:
   using FILE_pointer = typename ::std::unique_ptr<::FILE, Deletor>;
 
   enum class OffsetFlag : decltype(SEEK_SET) {
@@ -60,6 +58,8 @@ public:
   // ferror 	ファイルストリームがエラー状態かを判定する
   // perror 	システムエラーメッセージを出力する
   */
+protected:
+private:
 private:
 protected:
   FILE_pointer Continer;

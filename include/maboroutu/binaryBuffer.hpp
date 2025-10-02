@@ -15,12 +15,12 @@
 namespace maboroutu {
 
 class BinaryBuffer : public binary_t {
-private:
-protected:
 public:
   static_assert(!is_mix_endian_v, "is not mix endian.");
   static_assert(sizeof(value_type) == 1, "sizeof(value_type) is 1 byte.");
 
+protected:
+private:
 private:
   difference_type Offset;
 
