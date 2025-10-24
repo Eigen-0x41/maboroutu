@@ -1,10 +1,10 @@
 #pragma once
 
+#include <array>
 #include <bit>
 #include <concepts>
 #include <cstdint>
 #include <fstream>
-#include <type_traits>
 namespace maboroutu {
 namespace byteio {
 
@@ -14,14 +14,17 @@ static inline T read(IStreamDerived &IFS) {
   static_assert(std::endian::native == std::endian::big ||
                     std::endian::native == std::endian::little,
                 "native endian is big or little.");
-  std::make_unsigned_t<T> BufValue;
 
-  IFS.read(reinterpret_cast<char *>(&BufValue), sizeof(T));
+  // C++ Standard guarantees that 1 == sizeof(char).
+  std::array<char, sizeof(T)> BufArraydValue = {};
+  IFS.read(BufArraydValue.data(), BufArraydValue.size());
+
+  T BufValue = std::bit_cast<T>(BufArraydValue);
   if constexpr (EndianT != std::endian::native) {
     BufValue = std::byteswap(BufValue);
   }
 
-  return std::bit_cast<T>(BufValue);
+  return BufValue;
 }
 template <std::endian EndianT, std::floating_point T,
           std::derived_from<std::ifstream> IStreamDerived>
@@ -46,7 +49,9 @@ static inline void write(OStreamDerived &OFS, T Value) {
   if constexpr (EndianT != std::endian::native) {
     Value = std::byteswap(Value);
   }
-  OFS.write(reinterpret_cast<char *>(&Value), sizeof(T));
+  // C++ Standard guarantees that 1 == sizeof(char).
+  auto BufArraydValue = std::bit_cast<std::array<char, sizeof(T)>>(Value);
+  OFS.write(BufArraydValue.data(), BufArraydValue.size());
 }
 template <std::endian EndianT, std::floating_point T,
           std::derived_from<std::ifstream> OStreamDerived>

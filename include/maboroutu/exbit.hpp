@@ -4,7 +4,6 @@
 #include <bit>
 #include <concepts>
 #include <cstddef>
-#include <type_traits>
 namespace maboroutu {
 
 template <class T> void bytereverse(T *Val, size_t Size = 1) {

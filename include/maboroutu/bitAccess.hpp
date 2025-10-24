@@ -56,6 +56,10 @@ public:
     Accesser() = delete;
     Accesser(Accesser const &) = delete;
     Accesser(Accesser &&) = delete;
+    ~Accesser() = default;
+
+    Accesser &operator=(Accesser const &) = delete;
+    Accesser &operator=(Accesser &&) = delete;
 
     Accesser &operator=(value_type Value) {
       Value = std::rotl<value_type>(Value & Filter, ShiftSize);
@@ -78,11 +82,17 @@ private:
 protected:
 public:
   BitAccess() = default;
+  BitAccess(BitAccess const &Value) : Container(Value.Container) {}
   template <class TLoc>
   BitAccess(BitAccess<TLoc> const &Value) : Container(Value.Container) {}
   BitAccess(BitAccess &&Value) = default;
   BitAccess(value_type Value) : Container(Value) {}
+  ~BitAccess() = default;
 
+  BitAccess &operator=(BitAccess const &Value) noexcept {
+    Container = Value.Container;
+    return *this;
+  }
   template <class TLoc>
   BitAccess &operator=(BitAccess<TLoc> const &Value) noexcept {
     Container = Value.Container;

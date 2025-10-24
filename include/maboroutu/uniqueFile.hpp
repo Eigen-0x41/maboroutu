@@ -1,9 +1,6 @@
 #pragma once
 
-// 直接の依存ではありませんが仕様を満たすために必要です
-#include "streamConcepts.hpp"
 #include <cassert>
-#include <concepts>
 #include <corecrt.h>
 #include <cstdarg>
 #include <cstdio>
@@ -61,25 +58,25 @@ public:
 protected:
 private:
 private:
-protected:
   FILE_pointer Continer;
 
   // FILE_pointer fconv_unique(::FILE *File) { return FILE_pointer(File); }
-
+protected:
 public:
   UniqueFile() : Continer(nullptr) {}
   UniqueFile(UniqueFile const &File) = delete;
-  UniqueFile(UniqueFile &&File) : Continer(::std::move(File.Continer)) {};
+  UniqueFile(UniqueFile &&File) noexcept
+      : Continer(::std::move(File.Continer)) {};
   ~UniqueFile() = default;
 
   UniqueFile &operator=(UniqueFile const &) = delete;
-  UniqueFile &operator=(UniqueFile &&Value) {
+  UniqueFile &operator=(UniqueFile &&Value) noexcept {
     Continer = ::std::move(Value.Continer);
     return *this;
   }
 
   size_t size() noexcept {
-    size_t Current = ftell();
+    long Current = ftell();
     fseek(0L, OffsetFlag::End);
     size_t const RetValue = ftell();
     fseek(Current, OffsetFlag::Begin);
@@ -98,7 +95,7 @@ public:
     return Continer.operator bool();
   }
   [[nodiscard]] errno_t tmpfile_s(void) noexcept {
-    ::FILE *File;
+    ::FILE *File = nullptr;
     errno_t RetValue = ::tmpfile_s(&File);
     if (RetValue) {
       return RetValue;
@@ -130,7 +127,7 @@ public:
   }
   [[nodiscard]] errno_t constexpr fopen_s(const char *Filename,
                                           const char *Mode) noexcept {
-    ::FILE *File;
+    ::FILE *File = nullptr;
     errno_t RetValue = ::fopen_s(&File, Filename, Mode);
     if (RetValue) [[unlikely]] {
       return RetValue;
@@ -139,14 +136,14 @@ public:
     return RetValue;
   }
   int fprintf(const char *Format, ...) noexcept {
-    ::va_list VaList;
+    ::va_list VaList = nullptr;
     va_start(VaList, Format);
     auto RetValue = ::vfprintf(Continer.get(), Format, VaList);
     va_end(VaList);
     return RetValue;
   }
   int fscanf(const char *Format, ...) noexcept {
-    ::va_list VaList;
+    ::va_list VaList = nullptr;
     va_start(VaList, Format);
     auto RetValue = ::vfscanf(Continer.get(), Format, VaList);
     va_end(VaList);
@@ -190,7 +187,7 @@ public:
   }
 
   fpos_t constexpr fgetpos() noexcept {
-    ::fpos_t RetValue;
+    ::fpos_t RetValue = NULL;
     ::fgetpos(Continer.get(), &RetValue);
     return RetValue;
   }

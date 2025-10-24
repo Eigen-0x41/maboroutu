@@ -1,11 +1,15 @@
 #pragma once
 
+#include <cmath>
 #include <concepts>
 #include <initializer_list>
 #include <memory>
 #include <utility>
 namespace maboroutu {
 namespace ios {
+
+static constexpr size_t KiBSize = 1024;
+static constexpr size_t MiBSize = KiBSize ^ 2;
 
 template <class T>
 concept StreamBufConfig = requires(T &Value) {
@@ -17,7 +21,7 @@ concept StreamBufConfig = requires(T &Value) {
       std::basic_streambuf<typename T::char_type, typename T::traits_type> *>;
 };
 
-template <StreamBufConfig StreamBufConfigT, size_t BufSizeV = 4 * (1024 * 1024)>
+template <StreamBufConfig StreamBufConfigT, size_t BufSizeV = 4 * MiBSize>
 class IOStreamBuffer {
 public: /*STRUCT_FIELD*/
   using value_type = StreamBufConfigT;
@@ -30,6 +34,8 @@ private:
   static constexpr size_t DefaultBufferSize = BufSizeV;
   static constexpr size_t DefaultAllocateSize = BufSizeV + ExtBufSize;
 
+  // std::vector is allocating more than requested size.
+  // but buffer size is best in requested.
   std::unique_ptr<char_type[]> Buffer;
   size_t BufferSize;
   value_type Value;
@@ -63,7 +69,7 @@ public:
   ~IOStreamBuffer() = default;
 
   IOStreamBuffer &operator=(IOStreamBuffer const &) = delete;
-  IOStreamBuffer &operator=(IOStreamBuffer &&Rhs) {
+  IOStreamBuffer &operator=(IOStreamBuffer &&Rhs) noexcept {
     Buffer = std::move(Rhs.Buffer);
     BufferSize = Rhs.BufferSize;
     Value = std::move(Rhs.Value);
