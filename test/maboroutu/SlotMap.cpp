@@ -1,63 +1,82 @@
+#include <boost/test/tools/old/interface.hpp>
+#include <exception>
 #define BOOST_TEST_MAIN
 
-#include "maboroutu/slotMap.hpp"
+#include "maboroutu/slot_map.hpp"
 #include <boost/test/included/unit_test.hpp>
 #include <iostream>
 #include <print>
 #include <stdexcept>
 
 BOOST_AUTO_TEST_CASE(SlotMap) {
-  maboroutu::SlotMap<int> Test;
+  using slot_map_type = maboroutu::array_slot_map<int,4>;
+  slot_map_type test;
 
+  slot_map_type::key_type i1;
+  slot_map_type::key_type i2;
+  slot_map_type::key_type i3;
+  slot_map_type::key_type i4;
+  BOOST_CHECK_NO_THROW(i1 = test.insert(0));
+  BOOST_CHECK_NO_THROW(i2 = test.insert(1));
+  BOOST_CHECK_NO_THROW(i3 = test.insert(2));
+  BOOST_CHECK_NO_THROW(i4 = test.insert(3));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i1),
+               test.at(i1));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i2),
+               test.at(i2));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i3),
+               test.at(i3));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i4),
+               test.at(i4));
+  BOOST_CHECK_EQUAL(test.at(i1), 0);
+  BOOST_CHECK_EQUAL(test.at(i2), 1);
+  BOOST_CHECK_EQUAL(test.at(i3), 2);
+  BOOST_CHECK_EQUAL(test.at(i4), 3);
+  std::println(std::cout, "size: {}, capacity: {}", test.size(),
+               test.free_size());
 
-  auto I1 = Test.insert(0);
-  auto I2 = Test.insert(1);
-  auto I3 = Test.insert(2);
-  auto I4 = Test.insert(3);
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I1), Test.at(I1));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I2), Test.at(I2));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I3), Test.at(I3));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I4), Test.at(I4));
-  BOOST_CHECK_EQUAL(Test.at(I1), 0);
-  BOOST_CHECK_EQUAL(Test.at(I2), 1);
-  BOOST_CHECK_EQUAL(Test.at(I3), 2);
-  BOOST_CHECK_EQUAL(Test.at(I4), 3);
-  std::println(std::cout, "size: {}, capacity: {}", Test.size(),
-               Test.freeSize());
+  test.erase(i2);
+  test.erase(i4);
+  BOOST_CHECK_NO_THROW(i2 = test.emplace(14));
+  BOOST_CHECK_NO_THROW(i4 = test.emplace(15));
 
-  Test.erase(I2);
-  Test.erase(I4);
-  I2 = Test.emplace(14);
-  I4 = Test.emplace(15);
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i1),
+               test.at(i1));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i2),
+               test.at(i2));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i3),
+               test.at(i3));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i4),
+               test.at(i4));
+  BOOST_CHECK_EQUAL(test.at(i1), 0);
+  BOOST_CHECK_EQUAL(test.at(i2), 14);
+  BOOST_CHECK_EQUAL(test.at(i3), 2);
+  BOOST_CHECK_EQUAL(test.at(i4), 15);
+  std::println(std::cout, "size: {}, capacity: {}", test.size(),
+               test.free_size());
 
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I1), Test.at(I1));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I2), Test.at(I2));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I3), Test.at(I3));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I4), Test.at(I4));
-  BOOST_CHECK_EQUAL(Test.at(I1), 0);
-  BOOST_CHECK_EQUAL(Test.at(I2), 14);
-  BOOST_CHECK_EQUAL(Test.at(I3), 2);
-  BOOST_CHECK_EQUAL(Test.at(I4), 15);
-  std::println(std::cout, "size: {}, capacity: {}", Test.size(),
-               Test.freeSize());
+  test.erase(i1);
+  test.erase(i2);
+  test.erase(i4);
+  BOOST_CHECK_NO_THROW(i1 = test.emplace(26));
+  // BOOST_CHECK_NO_THROW(I2 = Test.emplaceBack(27));
+  BOOST_CHECK_NO_THROW(i4 = test.insert(28));
 
-  Test.erase(I1);
-  Test.erase(I2);
-  Test.erase(I4);
-  I1 = Test.emplace(26);
-  // I2 = Test.emplaceBack(27);
-  I4 = Test.insert(28);
-
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I1), Test.at(I1));
-  // std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I2), Test.at(I2));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I3), Test.at(I3));
-  std::println(std::cout, "i:{} v:{}", Test.__DEBUG_F__GET_KEY_INDEX_(I4), Test.at(I4));
-  BOOST_CHECK_EQUAL(Test.at(I1), 26);
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i1),
+               test.at(i1));
+  // std::println(std::cout, "i:{} v:{}", Test.debug_f_get_key_index(I2),
+  // Test.at(I2));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i3),
+               test.at(i3));
+  std::println(std::cout, "i:{} v:{}", test.debug_f_get_key_index(i4),
+               test.at(i4));
+  BOOST_CHECK_EQUAL(test.at(i1), 26);
   // BOOST_CHECK_EQUAL(Test.at(I2), 27);
-  BOOST_CHECK_EQUAL(Test.at(I3), 2);
-  BOOST_CHECK_EQUAL(Test.at(I4), 28);
-  std::println(std::cout, "size: {}, capacity: {}", Test.size(),
-               Test.freeSize());
+  BOOST_CHECK_EQUAL(test.at(i3), 2);
+  BOOST_CHECK_EQUAL(test.at(i4), 28);
+  std::println(std::cout, "size: {}, capacity: {}", test.size(),
+               test.free_size());
 
-  // BOOST_CHECK_THROW(Test.at(4), std::out_of_range);
+  i2 = test.emplace(0);
+  BOOST_CHECK_THROW(test.emplace(39), std::out_of_range);
 }

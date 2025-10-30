@@ -1,15 +1,14 @@
 #pragma once
 
-#include "./maboroutuDef.hpp"
-#include <concepts>
+#include "./maboroutudef.hpp"
 #include <type_traits>
 namespace maboroutu {
 template <class T, class ValueT, class... ArgsT>
-concept IOConcepts = requires(T &IO, ValueT Value) {
+concept io_concepts = requires(T &io, ValueT value) {
   requires std::is_constructible_v<T, binary_t &, ArgsT...>;
   requires std::is_constructible_v<T, binary_t &, size_t, ArgsT...>;
-  { Value = IO };
-  { IO = Value };
-  { IO.operator bool() };
+  { value = io };
+  { io = value };
+  { io.operator bool() };
 };
 } // namespace maboroutu

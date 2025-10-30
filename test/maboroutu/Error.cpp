@@ -1,44 +1,61 @@
-#include <cstddef>
 #define BOOST_TEST_MAIN
-
-#include "maboroutu/maboroutuDef.hpp"
 #include <boost/test/included/unit_test.hpp>
+
+#include "maboroutu/maboroutudef.hpp"
+#include <cstddef>
 #include <iostream>
 #include <print>
 
-maboroutu::ret<int> TestFunc(bool DoError) {
-  if (DoError) {
-    return maboroutu::makeRetErr<maboroutu::ret<>::error_type>(
-        maboroutu::ret<void>::error_type::categoly_type::Logic,
-        "Test Exception");
+using maboroutu::ret_type;
+
+namespace {
+constexpr const char *error_message = "Test Unexpect Message.";
+
+auto test_func(bool do_error) -> ret_type<int> {
+  if (do_error) {
+    return ret_type<>::unexpected_type{maboroutu::ret_type<int>::error_type(
+        maboroutu::ret_type<>::error_type::categoly_type::logic,
+        error_message)};
   }
   return 10;
 }
-maboroutu::ret<ptrdiff_t> convFunc(bool DoError) {
-  if (DoError) {
-    return maboroutu::convRetErr<ptrdiff_t>(TestFunc(true));
+auto conv_func(bool do_error) -> ret_type<ptrdiff_t> {
+  if (do_error) {
+    return test_func(true);
   }
-  return TestFunc(false);
+  return test_func(false);
 }
+} // namespace
 
-BOOST_AUTO_TEST_CASE(Error) {
+BOOST_AUTO_TEST_CASE(error) {
   {
-    auto Val = TestFunc(false);
-    BOOST_CHECK_EQUAL(Val.has_value(), true);
-    std::println(std::cout, "Value: {}", *Val);
+    auto val = test_func(false);
+    BOOST_ASSERT(val.has_value());
+    std::println(std::cout, "Value: {}", *val);
 
-    Val = TestFunc(true);
-    BOOST_CHECK_EQUAL(Val.has_value(), false);
-    std::println(std::cout, "ErrMess: {}", Val.error().what());
+    val = test_func(true);
+    BOOST_ASSERT(!val.has_value());
+    BOOST_CHECK_EQUAL(val.error().what(), error_message);
+    BOOST_ASSERT(val.error().categoly() ==
+                 ret_type<>::error_type::categoly_type::logic);
+    BOOST_ASSERT(val.error().descript() ==
+                 ret_type<>::error_type::descript_type::none);
+
+    std::println(std::cout, "ErrMess: {}", val.error().what());
   }
 
   {
-    auto Val = TestFunc(false);
-    BOOST_CHECK_EQUAL(Val.has_value(), true);
-    std::println(std::cout, "Value: {}", *Val);
+    auto val = test_func(false);
+    BOOST_ASSERT(val.has_value());
+    std::println(std::cout, "Value: {}", *val);
 
-    Val = convFunc(true);
-    BOOST_CHECK_EQUAL(Val.has_value(), false);
-    std::println(std::cout, "ErrMess: {}", Val.error().what());
+    val = conv_func(true);
+    BOOST_ASSERT(!val.has_value());
+    BOOST_CHECK_EQUAL(val.error().what(), error_message);
+    BOOST_ASSERT(val.error().categoly() ==
+                 ret_type<>::error_type::categoly_type::logic);
+    BOOST_ASSERT(val.error().descript() ==
+                 ret_type<>::error_type::descript_type::none);
+    std::println(std::cout, "ErrMess: {}", val.error().what());
   }
 }

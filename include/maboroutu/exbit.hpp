@@ -4,11 +4,12 @@
 #include <bit>
 #include <concepts>
 #include <cstddef>
+#include <span>
 namespace maboroutu {
 
-template <class T> void bytereverse(T *Val, size_t Size = 1) {
-  std::reverse(reinterpret_cast<char *>(Val),
-               reinterpret_cast<char *>(Val + Size));
+template <class T, size_t Extent> void bytereverse(std::span<T, Extent> span) {
+  auto byte_span = std::as_writable_bytes(span);
+  std::reverse(byte_span.begin(), byte_span.end());
 }
 
 // namespace {
@@ -57,18 +58,18 @@ template <class T> void bytereverse(T *Val, size_t Size = 1) {
 // }
 
 template <std::integral T, size_t Alignment>
-constexpr T alignSizeWithTruncation(T Value) noexcept {
+constexpr auto align_size_with_truncation(T value) noexcept -> T {
   static_assert(std::has_single_bit(Alignment),
                 "alignSize(): Alignment is Powers of 2.");
-  constexpr size_t AlignKey = Alignment - 1;
-  return Value & ~AlignKey;
+  constexpr size_t align_key = Alignment - 1;
+  return value & ~align_key;
 }
 template <std::integral T, size_t Alignment>
-constexpr T alignSize(T Value) noexcept {
+constexpr auto align_size(T value) noexcept -> T {
   static_assert(std::has_single_bit(Alignment),
                 "alignSize(): Alignment is Powers of 2.");
-  constexpr size_t AlignKey = Alignment - 1;
-  return alignSizeWithTruncation<T, Alignment>(Value + AlignKey);
+  constexpr size_t align_key = Alignment - 1;
+  return align_size_with_truncation<T, Alignment>(value + align_key);
 }
 
 static const bool is_mix_endian_v =

@@ -6,14 +6,14 @@
 
 BOOST_AUTO_TEST_CASE(StreamSeekConcept) {
   static_assert(maboroutu::StreamSeekConcept<maboroutu::UniqueFile>, "");
-  static_assert(maboroutu::StreamInputConcept<maboroutu::UniqueFile>, "");
-  static_assert(maboroutu::StreamOutputConcept<maboroutu::UniqueFile>, "");
-  static_assert(maboroutu::StreamTextInputConcept<maboroutu::UniqueFile>, "");
-  static_assert(maboroutu::StreamTextOutputConcept<maboroutu::UniqueFile>, "");
+  static_assert(maboroutu::stream_input_concept<maboroutu::unique_file>, "");
+  static_assert(maboroutu::stream_output_concept<maboroutu::unique_file>, "");
+  static_assert(maboroutu::stream_text_input_concept<maboroutu::unique_file>, "");
+  static_assert(maboroutu::stream_text_output_concept<maboroutu::unique_file>, "");
 
   BOOST_TEST(maboroutu::StreamSeekConcept<maboroutu::UniqueFile>);
-  BOOST_TEST(maboroutu::StreamInputConcept<maboroutu::UniqueFile>);
-  BOOST_TEST(maboroutu::StreamOutputConcept<maboroutu::UniqueFile>);
-  BOOST_TEST(maboroutu::StreamTextInputConcept<maboroutu::UniqueFile>);
-  BOOST_TEST(maboroutu::StreamTextOutputConcept<maboroutu::UniqueFile>);
+  BOOST_TEST(maboroutu::stream_input_concept<maboroutu::unique_file>);
+  BOOST_TEST(maboroutu::stream_output_concept<maboroutu::unique_file>);
+  BOOST_TEST(maboroutu::stream_text_input_concept<maboroutu::unique_file>);
+  BOOST_TEST(maboroutu::stream_text_output_concept<maboroutu::unique_file>);
 }
