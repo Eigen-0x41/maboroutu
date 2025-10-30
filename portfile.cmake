@@ -2,7 +2,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Eigen-0x41/maboroutu
     REF "${VERSION}" # 0.0.1.0
-    SHA512 0
+    SHA512 7b7852dc7e6ab2595233ca995f8c8dc0dbbe2ad6623fb14e8f1a103c3d083d208a6ec21594519e4d78779ebf8a19fcb9c77447af0dee3121bf872f25d2a7c801
     HEAD_REF maboroutu
 )
 
