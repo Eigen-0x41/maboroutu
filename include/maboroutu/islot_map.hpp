@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace maboroutu {
@@ -18,33 +19,30 @@ public:
 
 protected:
 private:
-  bool _is_enable;
+  static constexpr size_t monospace_index = 0;
+  static constexpr size_t value_index = 1;
+
   size_type _next = DependT::npos;
-  // 無名共用体
-  value_type _value;
+  // variantによる遅延構築
+  std::variant<std::monostate, value_type> _value;
   /*      IMPLIMENT_FIELD*/
 
 protected:
 public:
-  islot_map_node() : _is_enable(false), _value() {}
+  islot_map_node() : _value() {}
+  islot_map_node(islot_map_node const &rhs)
+      : _next(rhs._next), _value(rhs._value) {}
+  islot_map_node(islot_map_node &&rhs) noexcept
+      : _next(rhs._next), _value(std::move(rhs._value)) {}
+  islot_map_node(value_type const &value) : _value(value) {}
+  template <class... ArgsT>
+  islot_map_node(ArgsT &&...args)
+      : _value(std::in_place_index<value_index>, std::forward<ArgsT>(args)...) {
+  }
+  ~islot_map_node() = default;
+
   auto operator=(const islot_map_node &) -> islot_map_node & = delete;
   auto operator=(islot_map_node &&) -> islot_map_node & = delete;
-  islot_map_node(islot_map_node const &rhs)
-      : _is_enable(rhs._is_enable), _next(rhs._next), _value(rhs._value) {}
-  islot_map_node(islot_map_node &&rhs) noexcept
-      : _is_enable(rhs._is_enable), _next(rhs._next),
-        _value(std::move(rhs._value)) {}
-  islot_map_node(value_type const &value) : _is_enable(true), _value(value) {}
-  template <class... ArgsT>
-  islot_map_node(ArgsT &&...args) : _is_enable(true), _value() {
-    auto placeholder = _value;
-    std::construct_at(&placeholder, std::forward<ArgsT>(args)...);
-  }
-  ~islot_map_node() {
-    if (_is_enable) {
-      destroy();
-    }
-  }
 
   constexpr auto next() noexcept -> size_type & { return _next; }
   [[nodiscard]] constexpr auto next() const noexcept -> size_type const & {
@@ -52,31 +50,31 @@ public:
   }
 
   constexpr auto value() noexcept -> value_type & {
-    assert(_is_enable);
-    return _value;
+    value_type *ret_value = std::get_if<value_index>(&_value);
+    assert(ret_value == nullptr);
+    return *ret_value;
   }
   constexpr auto value() const noexcept -> value_type const & {
-    assert(_is_enable);
-    return _value;
+    value_type *ret_value = std::get_if<value_index>(&_value);
+    assert(ret_value == nullptr);
+    return *ret_value;
   }
 
   template <class... ArgsT> constexpr void construct(ArgsT &&...args) {
-    assert(!_is_enable);
-    // ::new (static_cast<void *>(&Value.Value))
-    // T(std::forward<ArgsT>(Args)...);
-    std::construct_at(&_value, std::forward<ArgsT>(args)...);
-    _is_enable = true;
+    assert(!has_value());
+    _value.template emplace<value_index>(std::forward<ArgsT>(args)...);
   }
   constexpr void destroy() {
-    assert(_is_enable);
-    // &(Value.Value)->~T();
-    std::destroy_at(&_value);
-    _is_enable = false;
+    assert(has_value());
+    _value.template emplace<monospace_index>();
   }
 
-  constexpr operator bool() const noexcept { return _is_enable; }
-};
+  [[nodiscard]] constexpr auto has_value() const noexcept -> bool {
+    return _value.index() == value_index;
+  }
 
+  constexpr operator bool() const noexcept { return has_value(); }
+};
 } // namespace
 
 template <class T, class MakeContinerT> class basic_islot_map {
