@@ -33,7 +33,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.1.2
+    VERSION 0.0.1.3
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
