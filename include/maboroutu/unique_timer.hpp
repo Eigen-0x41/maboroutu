@@ -5,6 +5,7 @@
 #include <print>
 #include <type_traits>
 
+namespace maboroutu {
 class timer {
 private:
   using clock_type = typename std::chrono::system_clock;
@@ -63,3 +64,4 @@ public:
             .count());
   }
 };
+} // namespace maboroutu
