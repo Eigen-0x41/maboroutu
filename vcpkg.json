@@ -1,6 +1,6 @@
 {
   "name": "maboroutu",
-  "version": "0.0.1.4",
+  "version": "0.0.1.5",
   "description": "Eigen's personal C++ utility library.",
   "homepage": "https://github.com/Eigen-0x41/maboroutu",
   "license": "MIT",
@@ -13,5 +13,13 @@
       "name": "vcpkg-cmake-config",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "maboroutu-testing": {
+      "description": "Dependencies needed for the tests.",
+      "dependencies": [
+        "boost-test"
+      ]
+    }
+  }
 }

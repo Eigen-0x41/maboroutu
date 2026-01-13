@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <exception>
 #include <expected>
+#include <format>
+#include <source_location>
+#include <string_view>
 #include <vector>
 namespace maboroutu {
 using byte_t = typename std::byte;
@@ -19,6 +22,24 @@ auto make_exception_error(Args &&...args) -> ret_type<void>::unexpected_type {
   static T holder(std::forward<Args>(args)...);
   return ret_type<void>::unexpected_type(std::in_place, &holder);
 }
+template <class T>
+auto make_exception_error(std::source_location const &location,
+                          std::string_view message)
+    -> ret_type<void>::unexpected_type
+#if !defined(NDEBUG)
+{
+  static T holder(std::format(
+      "line, column, file_name, function_name: message\n{}, {}, {}, {}: {}",
+      location.line(), location.column(), location.file_name(),
+      location.function_name(), message));
+  return ret_type<void>::unexpected_type(std::in_place, &holder);
+}
+#else
+{
+  static T holder(std::format("{}", message));
+  return ret_type<void>::unexpected_type(std::in_place, &holder);
+}
+#endif /*!defined(NDEBUG) */
 template <class T>
 constexpr auto err_cast(T &value) -> ret_type<void>::unexpected_type {
   return ret_type<void>::unexpected_type(value.error());

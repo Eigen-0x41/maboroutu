@@ -50,3 +50,18 @@ target_link_libraries(${PROJECT_NAME}_ErrorTest PRIVATE Boost::unit_test_framewo
 target_link_libraries(${PROJECT_NAME}_ErrorTest PRIVATE maboroutu)
 
 add_test(NAME ${PROJECT_NAME}_Error COMMAND ${PROJECT_NAME}_ErrorTest)
+
+### Test: ReferenceCounter
+### Test Main
+add_executable(${PROJECT_NAME}_ReferenceCounter ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/ReferenceCounter.cpp)
+# target_compile_features(${PROJECT_NAME}_ReferenceCounter PRIVATE cxx_std_23)
+# target_include_directories(${PROJECT_NAME}_ReferenceCounter PUBLIC ${PROJECT_SOURCE_DIR}/include)
+# target_compile_options(${PROJECT_NAME}_ReferenceCounter PUBLIC -Wno-dev)
+
+### Test Execute Dependencies
+# target_link_libraries(${PROJECT_NAME}_ReferenceCounter PRIVATE Boost::test)
+target_link_libraries(${PROJECT_NAME}_ReferenceCounter PRIVATE Boost::unit_test_framework)
+target_link_libraries(${PROJECT_NAME}_ReferenceCounter PRIVATE ${PROJECT_NAME})
+
+add_test(NAME ${PROJECT_NAME}_ReferenceCounter COMMAND ${PROJECT_NAME}_ReferenceCounter)
+

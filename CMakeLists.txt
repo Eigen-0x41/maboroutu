@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.15...3.26)
 
+# enable_testing()
+# list(APPEND VCPKG_MANIFEST_FEATURES "maboroutu-testing")
+
 # clang-tidy
 if(NOT CMAKE_EXPORT_COMPILE_COMMANDS EQUAL ON)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
+  message("enable vcpkg: $ENV{VCPKG_ROOT}")
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
@@ -33,7 +37,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.1.4
+    VERSION 0.0.1.5
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -88,8 +92,9 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
   DESTINATION share/${TargetName}
 )
 
-# enable_testing()
+
 # ### Test Dependencies
 # # find_package(Boost REQUIRED COMPONENTS test)
 # find_package(Boost REQUIRED COMPONENTS unit_test_framework)
-# add_subdirectory(test)
+# add_subdirectory(${PROJECT_SOURCE_DIR}/test)
+#
