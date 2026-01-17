@@ -1,6 +1,9 @@
+#include "maboroutu/error.hpp"
 #include "maboroutu/unique_timer.hpp"
 #include <array>
 #include <bit>
+#include <cassert>
+#include <expected>
 #include <utility>
 #define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
@@ -58,6 +61,23 @@ static auto target_src_func(double rate) noexcept -> maboroutu::ret_type<void> {
   return {};
 }
 
+struct tag0 {};
+struct tag1 {};
+struct tag2 {};
+
+using error_type = maboroutu::error_tag<tag0, tag1, tag2>;
+
+static auto target_tag_func(double rate) noexcept
+    -> std::expected<void, error_type> {
+  if (is_probability_in(rate)) {
+    if (is_probability_in(0.50)) {
+      return error_type::make_unexpected(tag0(), "exception occerd.");
+    }
+    return error_type::make_unexpected(tag1(), "exception occerd.");
+  }
+  return {};
+}
+
 static auto speedtest(size_t trial_count, double rate) {
   std::optional<maboroutu::timer::rap_type> rap;
   size_t successed = 0;
@@ -76,6 +96,14 @@ static auto speedtest(size_t trial_count, double rate) {
     }
     rap.emplace(timer.rap());
   }
+
+  auto result = target_src_func(1.0);
+  assert(result.or_else([](std::exception const *value) -> decltype(result) {
+    std::println("tag exception example\n"
+                 "what    : {}\n",
+                 value->what());
+    return {};
+  }));
 
   std::println("normal exception\n."
                "trial      : {}\n"
@@ -109,7 +137,59 @@ static auto speedsrctest(size_t trial_count, double rate) {
     rap.emplace(timer.rap());
   }
 
+  auto result = target_src_func(1.0);
+  assert(result.or_else([](std::exception const *value) -> decltype(result) {
+    std::println("tag exception example\n"
+                 "what    : {}\n",
+                 value->what());
+    return {};
+  }));
+
   std::println("add src exception\n."
+               "trial      : {}\n"
+               "successed  : {}\n"
+               "exeptioned : {}\n"
+               "rate       : {}\n"
+               "real rate  : {}\n"
+               "all time...\n{}\n",
+               trial_count, successed, exceptioned, rate,
+               static_cast<double>(exceptioned) /
+                   static_cast<double>(successed + exceptioned),
+               *rap);
+}
+
+static auto speedtagtest(size_t trial_count, double rate) {
+  std::optional<maboroutu::timer::rap_type> rap;
+  size_t successed = 0;
+  size_t exceptioned = 0;
+
+  {
+    maboroutu::timer timer;
+#pragma unroll 1
+    for (auto count = 0; count < trial_count; count++) {
+      auto result = target_tag_func(rate);
+      if (result.has_value()) {
+        successed++;
+      } else {
+        exceptioned++;
+      }
+    }
+    rap.emplace(timer.rap());
+  }
+
+  auto result = target_tag_func(1.0);
+  assert(result.or_else([](error_type &value) -> decltype(result) {
+    std::println("tag exception example\n"
+                 "what    : {}\n"
+                 "is tag0 : {}\n"
+                 "is tag1 : {}\n"
+                 "is tag2 : {}\n",
+                 value.what(), value == tag0(), value == tag1(),
+                 value == tag2());
+    return {};
+  }));
+
+  std::println("tag exception\n."
                "trial      : {}\n"
                "successed  : {}\n"
                "exeptioned : {}\n"
@@ -142,4 +222,9 @@ BOOST_AUTO_TEST_CASE(error) {
   speedsrctest(trial_count, 0.01);
   speedsrctest(trial_count, 0.99);
   speedsrctest(trial_count, 1.00);
+
+  speedtagtest(trial_count, 0.00);
+  speedtagtest(trial_count, 0.01);
+  speedtagtest(trial_count, 0.99);
+  speedtagtest(trial_count, 1.00);
 }

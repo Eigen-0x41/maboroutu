@@ -1,15 +1,14 @@
-cmake_minimum_required(VERSION 3.15...3.26)
-
-# enable_testing()
-# list(APPEND VCPKG_MANIFEST_FEATURES "maboroutu-testing")
+cmake_minimum_required(VERSION 3.28)
 
 # clang-tidy
 if(NOT CMAKE_EXPORT_COMPILE_COMMANDS EQUAL ON)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
+# enable_testing()
+# list(APPEND VCPKG_MANIFEST_FEATURES "maboroutu-testing")
+
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
-  message("enable vcpkg: $ENV{VCPKG_ROOT}")
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
@@ -19,25 +18,25 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   # clang++
-  add_compile_options(-Wall -Wextra --pedantic-errors)
-  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>,-g,-O3>)
+  add_compile_options(-Wall -Wextra --pedantic-errors -fno-rtti)
+  add_compile_options($<IF:$<CONFIG:Debug>, -g, -O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>, -g, -O3>)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # g++
-  add_compile_options(-Wall -Wextra --pedantic-errors)
-  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>,-g,-O3>)
+  add_compile_options(-Wall -Wextra --pedantic-errors -fno-rtti)
+  add_compile_options($<IF:$<CONFIG:Debug>, -g, -O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>, -g, -O3>)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   # icc, icx
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # cl, clang-cl
-  add_compile_options(/EHsc /W4 /permissive-)
-  add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/O2>)
-  # add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/Ot>)
+  add_compile_options(/EHsc /W4 /permissive- /GR-)
+  add_compile_options($<IF:$<CONFIG:Debug>, /Z7, /O2>)
+  # add_compile_options($<IF:$<CONFIG:Debug>, /Z7, /Ot>)
 endif()
 
 project(maboroutu
-    VERSION 0.0.1.5
+    VERSION 0.0.1.6
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -97,4 +96,4 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
 # # find_package(Boost REQUIRED COMPONENTS test)
 # find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 # add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-#
+

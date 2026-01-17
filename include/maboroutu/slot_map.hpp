@@ -12,7 +12,7 @@
 namespace maboroutu {
 
 namespace {
-template <class DependT> class slot_map_key {
+template <class DependT, class Tag> class slot_map_key {
 public:
   using size_type = size_t;
 
@@ -39,8 +39,8 @@ public:
   constexpr operator bool() const noexcept { return _key != npos; }
 };
 
-struct slot_map_key_accesser {
-  using key_type = slot_map_key<slot_map_key_accesser>;
+template <class Tag> struct slot_map_key_accesser {
+  using key_type = slot_map_key<slot_map_key_accesser, Tag>;
 
   static auto construct(key_type::size_type key) -> key_type {
     return key_type(key);
@@ -53,14 +53,15 @@ struct slot_map_key_accesser {
   }
 };
 
-template <class DependT, class T> class slot_map_node {
+template <class DependT, class Tag, class T> class slot_map_node {
 public:
+  using slot_map_key_accesser_type = slot_map_key_accesser<Tag>;
   using value_type = T;
-  using key_type = slot_map_key_accesser::key_type;
+  using key_type = slot_map_key_accesser_type::key_type;
 
 protected:
 private:
-  using key_accesser = slot_map_key_accesser;
+  using key_accesser = slot_map_key_accesser_type;
 
   static constexpr size_t monospace_index = 0;
   static constexpr size_t value_index = 1;
@@ -120,16 +121,17 @@ public:
 };
 } // namespace
 
-template <class T, class MakeContinerT> class basic_slot_map {
+template <class Tag, class T, class MakeContinerT> class basic_slot_map {
 public: /*STRUCT_FIELD*/
-  using key_type = slot_map_key_accesser::key_type;
+  using slot_map_key_accesser_type = slot_map_key_accesser<Tag>;
+  using key_type = slot_map_key_accesser_type::key_type;
   using value_type = T;
   using size_type = size_t;
 
 protected:
 private:
-  using key_accesser = slot_map_key_accesser;
-  using node_type = slot_map_node<basic_slot_map, T>;
+  using key_accesser = slot_map_key_accesser_type;
+  using node_type = slot_map_node<basic_slot_map, Tag, T>;
   using continer_type = MakeContinerT::template type<node_type>;
 
   continer_type _continer;
@@ -326,9 +328,11 @@ template <size_t SizeV> struct make_array {
   template <class T> using type = typename std::array<T, SizeV>;
 };
 
-template <class T> using slot_map = basic_slot_map<T, make_deque>;
-template <class T> using vector_slot_map = basic_slot_map<T, make_vector>;
-template <class T, size_t SizeV>
-using array_slot_map = basic_slot_map<T, make_array<SizeV>>;
+template <class Tag, class T>
+using slot_map = basic_slot_map<Tag, T, make_deque>;
+template <class Tag, class T>
+using vector_slot_map = basic_slot_map<Tag, T, make_vector>;
+template <class Tag, class T, size_t SizeV>
+using array_slot_map = basic_slot_map<Tag, T, make_array<SizeV>>;
 
 } // namespace maboroutu
