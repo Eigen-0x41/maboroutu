@@ -36,7 +36,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 project(maboroutu
-    VERSION 0.0.1.6
+    VERSION 0.0.1.7
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -96,4 +96,3 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
 # # find_package(Boost REQUIRED COMPONENTS test)
 # find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 # add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-

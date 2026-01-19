@@ -1,9 +1,9 @@
 #include <boost/test/tools/old/interface.hpp>
-#include <exception>
 #define BOOST_TEST_MAIN
 
 #include "maboroutu/slot_map.hpp"
 #include <boost/test/included/unit_test.hpp>
+#include <exception>
 #include <iostream>
 #include <print>
 #include <stdexcept>
@@ -11,15 +11,18 @@
 struct slot_tag0 {};
 struct slot_tag1 {};
 
+using slot_key0 = maboroutu::slot_map_key<slot_tag0>;
+using slot_key1 = maboroutu::slot_map_key<slot_tag1>;
+
 BOOST_AUTO_TEST_CASE(SlotMap) {
   std::println("test0");
-  using slot_map_type = maboroutu::array_slot_map<slot_tag0, int, 4>;
-  slot_map_type test0;
+  using slot_map_type = maboroutu::array_slot_map<slot_key0, int, 4>;
+  slot_map_type test0{};
 
-  slot_map_type::key_type i01;
-  slot_map_type::key_type i02;
-  slot_map_type::key_type i03;
-  slot_map_type::key_type i04;
+  slot_key0 i01;
+  slot_key0 i02;
+  slot_key0 i03;
+  slot_key0 i04;
   BOOST_CHECK_NO_THROW(i01 = test0.insert(0));
   BOOST_CHECK_NO_THROW(i02 = test0.insert(1));
   BOOST_CHECK_NO_THROW(i03 = test0.insert(2));
@@ -85,13 +88,13 @@ BOOST_AUTO_TEST_CASE(SlotMap) {
   BOOST_CHECK_THROW(test0.emplace(39), std::out_of_range);
 
   std::println("test1");
-  using slot_map_type1 = maboroutu::array_slot_map<slot_tag1, int, 4>;
-  slot_map_type1 test1;
+  using slot_map_type1 = maboroutu::array_slot_map<slot_key1, int, 4>;
+  slot_map_type1 test1{};
 
-  slot_map_type1::key_type i11;
-  slot_map_type1::key_type i12;
-  slot_map_type1::key_type i13;
-  slot_map_type1::key_type i14;
+  slot_key1 i11;
+  slot_key1 i12;
+  slot_key1 i13;
+  slot_key1 i14;
   BOOST_CHECK_NO_THROW(i11 = test1.insert(0));
   BOOST_CHECK_NO_THROW(i12 = test1.insert(1));
   BOOST_CHECK_NO_THROW(i13 = test1.insert(2));

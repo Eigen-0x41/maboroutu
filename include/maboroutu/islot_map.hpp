@@ -3,7 +3,6 @@
 #include <array>
 #include <cassert>
 #include <deque>
-#include <memory>
 #include <stdexcept>
 #include <utility>
 #include <variant>
@@ -19,9 +18,6 @@ public:
 
 protected:
 private:
-  static constexpr size_t monospace_index = 0;
-  static constexpr size_t value_index = 1;
-
   size_type _next = DependT::npos;
   // variantによる遅延構築
   std::variant<std::monostate, value_type> _value;
@@ -37,8 +33,7 @@ public:
   islot_map_node(value_type const &value) : _value(value) {}
   template <class... ArgsT>
   islot_map_node(ArgsT &&...args)
-      : _value(std::in_place_index<value_index>, std::forward<ArgsT>(args)...) {
-  }
+      : _value(std::in_place_type<value_type>, std::forward<ArgsT>(args)...) {}
   ~islot_map_node() = default;
 
   auto operator=(const islot_map_node &) -> islot_map_node & = delete;
@@ -50,27 +45,27 @@ public:
   }
 
   constexpr auto value() noexcept -> value_type & {
-    value_type *ret_value = std::get_if<value_index>(&_value);
-    assert(ret_value == nullptr);
+    value_type *const ret_value = std::get_if<value_type>(&_value);
+    assert(ret_value);
     return *ret_value;
   }
   constexpr auto value() const noexcept -> value_type const & {
-    value_type *ret_value = std::get_if<value_index>(&_value);
-    assert(ret_value == nullptr);
+    value_type *const ret_value = std::get_if<value_type>(&_value);
+    assert(ret_value);
     return *ret_value;
   }
 
   template <class... ArgsT> constexpr void construct(ArgsT &&...args) {
     assert(!has_value());
-    _value.template emplace<value_index>(std::forward<ArgsT>(args)...);
+    _value.template emplace<value_type>(std::forward<ArgsT>(args)...);
   }
   constexpr void destroy() {
     assert(has_value());
-    _value.template emplace<monospace_index>();
+    _value.template emplace<std::monostate>();
   }
 
   [[nodiscard]] constexpr auto has_value() const noexcept -> bool {
-    return _value.index() == value_index;
+    return _value.index() == 1;
   }
 
   constexpr operator bool() const noexcept { return has_value(); }
