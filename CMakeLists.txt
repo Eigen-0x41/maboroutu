@@ -5,7 +5,6 @@ if(NOT CMAKE_EXPORT_COMPILE_COMMANDS EQUAL ON)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-# enable_testing()
 # list(APPEND VCPKG_MANIFEST_FEATURES "maboroutu-testing")
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
@@ -96,3 +95,4 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${TargetName}Config.cmake"
 # # find_package(Boost REQUIRED COMPONENTS test)
 # find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 # add_subdirectory(${PROJECT_SOURCE_DIR}/test)
+# enable_testing()
