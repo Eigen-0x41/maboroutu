@@ -57,17 +57,16 @@ static auto target_src_func(double rate) noexcept -> maboroutu::ret_type<void> {
 struct tag0 {};
 struct tag1 {};
 struct tag2 {};
-struct tag3 {};
 
 using error_type = maboroutu::error_tag<tag0, tag1, tag2>;
-using error0_type = maboroutu::error_tag<tag2, tag1, tag0, tag3>;
 
-static auto target_tag_func(double rate) noexcept -> error_type::result<> {
+static auto target_tag_func(double rate) noexcept
+    -> std::expected<void, error_type> {
   if (is_probability_in(rate)) {
     if (is_probability_in(0.50)) {
-      return error_type::make_unexpected<tag0>("exception occerd.");
+      return error_type::make_unexpected(tag0(), "exception occerd.");
     }
-    return error_type::make_unexpected<tag1>("exception occerd.");
+    return error_type::make_unexpected(tag1(), "exception occerd.");
   }
   return {};
 }
