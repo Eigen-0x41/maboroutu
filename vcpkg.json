@@ -1,6 +1,6 @@
 {
   "name": "maboroutu",
-  "version": "0.0.1.7",
+  "version": "0.0.1.8",
   "description": "Eigen's personal C++ utility library.",
   "homepage": "https://github.com/Eigen-0x41/maboroutu",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "maboroutu-testing": {
       "description": "Dependencies needed for the tests.",
       "dependencies": [
-        "boost-test"
+        "gtest"
       ]
     }
   }

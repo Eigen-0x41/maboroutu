@@ -42,7 +42,9 @@ public: /*STRUCT_FIELD*/
 protected:
 private:
   std::string _name;
-  std::common_type_t<time_point_t::duration, time_point_t::duration> _value;
+  std::common_type_t<typename time_point_t::duration,
+                     typename time_point_t::duration>
+      _value;
 
   /*--:  *IMPLIMENT_FIELD*/
 protected:
@@ -50,9 +52,10 @@ public:
   timer_rap_point() = delete;
   timer_rap_point(timer_rap_point const &) = default;
   timer_rap_point(timer_rap_point &&) = default;
-  timer_rap_point(std::string name,
-                  std::common_type_t<time_point_t::duration,
-                                     time_point_t::duration> const &value)
+  timer_rap_point(
+      std::string name,
+      std::common_type_t<typename time_point_t::duration,
+                         typename time_point_t::duration> const &value)
       : _name(std::move(name)), _value(value) {}
   ~timer_rap_point() = default;
 

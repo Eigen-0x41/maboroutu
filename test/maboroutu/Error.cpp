@@ -1,17 +1,10 @@
 #include "maboroutu/error.hpp"
+#include "maboroutu/maboroutudef.hpp"
 #include "maboroutu/unique_timer.hpp"
 #include <array>
-#include <bit>
 #include <cassert>
-#include <expected>
-#include <utility>
-#define BOOST_TEST_MAIN
-#include <boost/test/included/unit_test.hpp>
-
-#include "maboroutu/maboroutudef.hpp"
 #include <cstddef>
-#include <iostream>
-#include <print>
+#include <cstdlib>
 #include <random>
 
 static std::random_device::result_type master_seed;
@@ -203,7 +196,7 @@ static auto speedtagtest(size_t trial_count, double rate) {
                *rap);
 }
 
-BOOST_AUTO_TEST_CASE(error) {
+auto main(int argc, char **argv) -> int {
 #if !defined(NDEBUG)
   static constexpr const size_t trial_count = 1'000'000;
 #else
@@ -232,4 +225,6 @@ BOOST_AUTO_TEST_CASE(error) {
   auto res = error_type::make_unexpected<tag2>("exp message.").error();
   auto result = error0_type::make_unexpected(res, res.what());
   std::println("error code:\n{}\n\n", result.error().what());
+
+  return EXIT_SUCCESS;
 }
