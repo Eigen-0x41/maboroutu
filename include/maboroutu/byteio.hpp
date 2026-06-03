@@ -5,7 +5,6 @@
 #include <bit>
 #include <concepts>
 #include <cstdint>
-#include <fstream>
 
 namespace maboroutu {
 template <class StreamDerived> class basic_binary_stream {
@@ -99,11 +98,15 @@ public:
     }
   }
 };
+} // namespace maboroutu
 
-template <std::derived_from<std::fstream> StreamDerived>
+#include <iostream>
+
+namespace maboroutu {
+template <std::derived_from<std::iostream> StreamDerived>
 using binary_stream = basic_binary_stream<StreamDerived>;
-template <std::derived_from<std::ifstream> IStreamDerived>
+template <std::derived_from<std::istream> IStreamDerived>
 using binary_istream = basic_binary_stream<IStreamDerived>;
-template <std::derived_from<std::ifstream> OStreamDerived>
+template <std::derived_from<std::ostream> OStreamDerived>
 using binary_ostream = basic_binary_stream<OStreamDerived>;
 } // namespace maboroutu

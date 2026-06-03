@@ -1,105 +1,105 @@
 #pragma once
 
-#include <concepts>
-#include <exception>
-#include <expected>
-#include <locale>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <variant>
+/*
+ * 1. エラー原因
+ * 2. エラー詳細
+ * 3. 想定外の場合はその種別の出力
+ * 4. throw例外のサポート
+ */
+
+#include <type_traits>
+
+#ifdef MABOROUTU_ENABLE_EXCEPTION
+#include <stdexcept>
 
 namespace maboroutu {
-
-template <class T, class... Args> struct has_in_args {
-  template <class Check, class... LocArgs>
-  static consteval auto checker() noexcept -> bool {
-    if constexpr (std::is_same_v<T, Check>) {
-      return true;
-    }
-    if constexpr (requires {
-                    { checker<LocArgs...>() };
-                  }) {
-      return checker<LocArgs...>();
-    }
-    return false;
-  }
-
-  static const bool value = checker<Args...>();
-};
-
-template <class... Args>
-// [[error]]
-class error_tag {
+// [[maboroutu_error]]
+class maboroutu_error : public std::runtime_error {
 public: /*STRUCT_FIELD*/
 protected:
 private:
-  std::variant<Args...> _tag;
-  std::expected<std::string, char const *> _message;
-
-  template <class LocT, class... LocArgs> struct args_picker {
-    using value_type = LocT;
-  };
+  using self_type = maboroutu_error;
 
   /*--:  *IMPLIMENT_FIELD*/
 protected:
 public:
-  error_tag() = delete;
-  error_tag(error_tag const &) = default;
-  error_tag(error_tag &&) = default;
-  template <class T>
-  explicit error_tag(T /*unused*/, std::string const &message)
-      : _tag(T()), _message(message) {
-    error_tag::check_alternative<T>();
-  }
-  template <class T>
-  explicit error_tag(T /*unused*/, char const *const message)
-      : _tag(T()), _message(std::unexpected{message}) {
-    error_tag::check_alternative<T>();
-  }
-  ~error_tag() = default;
+  using std::runtime_error::runtime_error;
+  maboroutu_error(const maboroutu_error &) = delete;
+  maboroutu_error(maboroutu_error &&) = delete;
 
-  template <class T> static consteval auto has_alternative() noexcept -> bool {
-    return has_in_args<T, Args...>::value;
-  }
+  auto operator=(maboroutu_error const &rhs) -> maboroutu_error & = default;
+  auto operator=(maboroutu_error &&rhs) -> maboroutu_error & = default;
+};
+} // namespace maboroutu
+#endif
 
-  template <class T> static consteval void check_alternative() noexcept {
-    static_assert(has_alternative<T>(), "'this' is can hold requested type.");
-  }
+namespace maboroutu {
 
-  [[nodiscard]] auto constexpr what() const noexcept -> char const *const {
-    if (_message.has_value()) {
-      return _message.value().c_str();
+template <class ErrcT, class CharT, size_t SizeV> struct error_seed {
+  ErrcT code;
+  CharT message[SizeV];
+  static constexpr size_t size = SizeV - 1;
+
+  consteval error_seed(ErrcT arg_code, CharT const (&arg_message)[SizeV]) {
+    code = arg_code;
+    for (auto i = 0; i < size; i++) {
+      message[i] = arg_message[i];
     }
-    return _message.error();
-  }
-
-  auto operator=(error_tag const &rhs) -> error_tag & = default;
-  auto operator=(error_tag &&rhs) -> error_tag & = default;
-
-  template <class T>
-  friend auto constexpr operator==(error_tag &left, T /*unused*/) -> bool {
-    left.template check_alternative<T>();
-    if (T *buf = std::get_if<T>(&left._tag)) {
-      return true;
-    }
-    return false;
-  }
-  template <class T>
-  friend auto constexpr operator==(T /*unused*/, error_tag const &right)
-      -> bool {
-    return right == T();
-  }
-
-  template <class T>
-  static auto make_unexpected(T /*unused*/, std::string message) noexcept
-      -> std::unexpected<error_tag> {
-    return std::unexpected<error_tag>(std::in_place, T(), message);
-  }
-  template <class T>
-  static auto make_unexpected(T /*unused*/, char const *const message) noexcept
-      -> std::unexpected<error_tag> {
-    return std::unexpected<error_tag>(std::in_place, T(), message);
+    message[size] = '\n';
   }
 };
+
+template <class ErrcT, class CharT = char>
+// [[error]]
+class error {
+public: /*STRUCT_FIELD*/
+  static_assert(std::is_enum_v<ErrcT>, "ErrcT is enum.");
+
+  using code_type = ErrcT;
+  using message_type = CharT const *;
+  template <size_t SizeV> using seed_type = error_seed<ErrcT, CharT, SizeV>;
+
+protected:
+private:
+  using self_type = error;
+
+  struct container_t {
+    code_type code;
+    message_type message;
+  };
+
+  container_t const *_value;
+
+  /*--:  *IMPLIMENT_FIELD*/
+protected:
+  consteval explicit error(container_t const *value) : _value(value) {
+#ifdef MABOROUTU_ENABLE_EXCEPTION
+    throw maboroutu_error{value->message};
+#endif
+  }
+
+public:
+  error() = delete;
+  error(error const &) = default;
+  error(error &&) = default;
+  ~error() = default;
+
+  constexpr auto code(this self_type &self) noexcept -> code_type {
+    return self._value->message;
+  }
+
+  constexpr auto what(this self_type &self) noexcept -> message_type {
+    return self._value->message;
+  }
+
+  template <error_seed SeedV> static consteval auto make() -> self_type {
+    static constexpr container_t value{.code = SeedV.code,
+                                       .message = SeedV.message};
+    return self_type(&value);
+  }
+
+  auto operator=(error const &rhs) -> error & = default;
+  auto operator=(error &&rhs) -> error & = default;
+};
+
 } // namespace maboroutu
