@@ -16,7 +16,7 @@ endif()
 #endif()
 
 project(maboroutu
-    VERSION 0.0.2.3
+    VERSION 0.0.2.4
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
