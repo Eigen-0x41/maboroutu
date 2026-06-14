@@ -11,7 +11,7 @@ module;
 #include <ratio>
 #include <vector>
 
-export module maboroutu:binarystream;
+export module maboroutu.binarystream;
 
 namespace maboroutu {
 
