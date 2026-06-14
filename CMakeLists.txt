@@ -55,37 +55,39 @@ target_sources(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
   PRIVATE
   ${${PROJECT_NAME}_MODULE_IMPLEMENTATION})
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  # clang++
-  target_compile_options(${PROJECT_NAME} PRIVATE
-      $<IF:$<CONFIG:Debug>,-g,-O2>
-      -Wall
-      -Wextra
-      --pedantic-errors
-      -fno-rtti
-      # -pthread
-  )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # g++
-  target_compile_options(${PROJECT_NAME} PRIVATE
-      $<IF:$<CONFIG:Debug>,-g,-O2>
-      -Wall
-      -Wextra
-      --pedantic-errors
-      -fno-rtti
-      # -pthread
-  )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  # icc, icx
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  # cl, clang-cl
-  target_compile_options(${PROJECT_NAME} PRIVATE
-      $<IF:$<CONFIG:Debug>,/Z7,/O2>
-      /EHsc
-      /W4
-      /permissive-
-      /GR-
-  )
+if(${PROJECT_NAME}_DISABLE_COMPILE_OPTION)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # clang++
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<IF:$<CONFIG:Debug>,-g,-O2>
+        -Wall
+        -Wextra
+        --pedantic-errors
+        -fno-rtti
+        # -pthread
+    )
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # g++
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<IF:$<CONFIG:Debug>,-g,-O2>
+        -Wall
+        -Wextra
+        --pedantic-errors
+        -fno-rtti
+        # -pthread
+    )
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+    # icc, icx
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # cl, clang-cl
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<IF:$<CONFIG:Debug>,/Z7,/O2>
+        /EHsc
+        /W4
+        /permissive-
+        /GR-
+    )
+  endif()
 endif()
 
 ### Dependencies
@@ -120,7 +122,8 @@ endif()
 install(EXPORT ${PROJECT_NAME}-targets
   FILE ${PROJECT_NAME}-targets.cmake
   NAMESPACE ${PROJECT_NAME}::
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}) ### package config
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})
+### package config
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
