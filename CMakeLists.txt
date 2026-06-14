@@ -16,7 +16,7 @@ endif()
 #endif()
 
 project(maboroutu
-    VERSION 0.0.2.6
+    VERSION 0.0.2.15
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -35,11 +35,6 @@ else()
 endif()
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  # target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
-else()
-  target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
-endif()
 
 file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
   "${PROJECT_SOURCE_DIR}/src/*.cppm")
@@ -54,40 +49,6 @@ target_sources(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
   PRIVATE
   ${${PROJECT_NAME}_MODULE_IMPLEMENTATION})
-if(${PROJECT_NAME}_DISABLE_COMPILE_OPTION)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # clang++
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        $<IF:$<CONFIG:Debug>,-g,-O2>
-        -Wall
-        -Wextra
-        --pedantic-errors
-        -fno-rtti
-        # -pthread
-    )
-  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # g++
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        $<IF:$<CONFIG:Debug>,-g,-O2>
-        -Wall
-        -Wextra
-        --pedantic-errors
-        -fno-rtti
-        # -pthread
-    )
-  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-    # icc, icx
-  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    # cl, clang-cl
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        $<IF:$<CONFIG:Debug>,/Z7,/O2>
-        /EHsc
-        /W4
-        /permissive-
-        /GR-
-    )
-  endif()
-endif()
 
 ### Dependencies
 # find_package(${LIB} CONFIG REQUIRED)

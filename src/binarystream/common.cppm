@@ -1,0 +1,62 @@
+module;
+#include <array>
+#include <bit>
+#include <cassert>
+#include <cstddef>
+#include <cstring>
+#include <ratio>
+#include <vector>
+
+export module maboroutu.binarystream:common;
+
+export namespace maboroutu {
+template <class CharT, class T, size_t Size = 1> struct make_convert_array {
+  using ratio = std::ratio<sizeof(CharT), sizeof(T)>;
+  static_assert(((Size * ratio::den) % ratio::num) == 0,
+                "can not convert table.");
+  using value_type =
+      typename std::array<CharT, (Size * ratio::den) / ratio::num>;
+  using target_type = typename std::array<T, Size>;
+
+  constexpr static auto make_convert_table() -> value_type { return {}; }
+
+  constexpr static auto from(value_type const &value) noexcept -> target_type {
+    return std::bit_cast<target_type>(value);
+  }
+  constexpr static auto to(target_type const &value) noexcept -> value_type {
+    return std::bit_cast<value_type>(value);
+  }
+  constexpr static auto to(T const value) noexcept -> value_type {
+    return std::bit_cast<value_type>(value);
+  }
+};
+template <class CharT, class T> struct make_convert_vector {
+  using ratio = std::ratio<sizeof(CharT), sizeof(T)>;
+  using value_type = typename std::vector<CharT>;
+  using target_type = typename std::vector<T>;
+
+  constexpr static auto make_convert_table(size_t size) -> value_type {
+    assert(((size * ratio::den) % ratio::num) == 0);
+    return value_type((size * ratio::den) / ratio::num, {});
+  }
+
+  constexpr static auto from(value_type const &value) -> target_type {
+    assert(((value.size() * ratio::num) % ratio::den) == 0);
+    target_type ret_value((value.size() * ratio::num) / ratio::den, {});
+    std::memcpy(ret_value.data(), value.data(), value.size() * ratio::num);
+    return ret_value;
+  }
+  constexpr static auto to(target_type const &value) -> value_type {
+    value_type ret_value = make_convert_table(value.size());
+    std::memcpy(ret_value.data(), value.data(), value.size() * ratio::den);
+    return ret_value;
+  }
+};
+
+template <class T> void member_byte_swap(T &value) {
+#pragma unroll 4
+  for (auto &member : value) {
+    member = std::byteswap(member);
+  }
+}
+} // namespace maboroutu
