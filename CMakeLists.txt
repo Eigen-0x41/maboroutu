@@ -15,53 +15,76 @@ endif()
 #  set(CMAKE_BUILD_TYPE Release)
 #endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  # clang++
-  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>
-      -Wall
-      -Wextra
-      --pedantic-errors
-      -fno-rtti)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # g++
-  add_compile_options($<IF:$<CONFIG:Debug>,-g,-O2>
-      -Wall
-      -Wextra
-      --pedantic-errors
-      -fno-rtti)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  # icc, icx
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  # cl, clang-cl
-  add_compile_options($<IF:$<CONFIG:Debug>,/Z7,/O2>
-      /EHsc
-      /W4
-      /permissive-
-      /GR-)
-endif()
-
-
 project(maboroutu
-    VERSION 0.0.1.8
+    VERSION 0.0.1.0
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
 )
 
-include(GNUInstallDirs)
+option(${PROJECT_NAME}_SHARED_LIBS "Build ${PROJECT_NAME} as a shared library." OFF)
+
+if(${PROJECT_NAME}_SHARED_LIBS)
+  add_library(${PROJECT_NAME} SHARED)
+else()
+  add_library(${PROJECT_NAME} STATIC)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  target_compile_options(${PROJECT_NAME} PRIVATE
+    /std:c++latest)
+else()
+  target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_26)
+endif()
+
+file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
+  "${PROJECT_SOURCE_DIR}/src/*.cppm")
+file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_IMPLEMENTATION
+  "${PROJECT_SOURCE_DIR}/src/*.cpp")
+target_sources(${PROJECT_NAME}
+  PUBLIC
+  FILE_SET ${PROJECT_NAME}_FILE_SET
+  TYPE CXX_MODULES
+  BASE_DIRS ${PROJECT_SOURCE_DIR}/src
+  FILES ${${PROJECT_NAME}_MODULE_INTERFACE})
+target_sources(${PROJECT_NAME}
+  PRIVATE
+  ${${PROJECT_NAME}_MODULE_IMPLEMENTATION})
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # clang++
+  target_compile_options(${PROJECT_NAME} PRIVATE
+      $<IF:$<CONFIG:Debug>,-g,-O2>
+      -Wall
+      -Wextra
+      --pedantic-errors
+      -fno-rtti
+      # -pthread
+  )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # g++
+  target_compile_options(${PROJECT_NAME} PRIVATE
+      $<IF:$<CONFIG:Debug>,-g,-O2>
+      -Wall
+      -Wextra
+      --pedantic-errors
+      -fno-rtti
+      # -pthread
+  )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+  # icc, icx
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # cl, clang-cl
+  target_compile_options(${PROJECT_NAME} PRIVATE
+      $<IF:$<CONFIG:Debug>,/Z7,/O2>
+      /EHsc
+      /W4
+      /permissive-
+      /GR-
+  )
+endif()
 
 ### Dependencies
 # find_package(${LIB} CONFIG REQUIRED)
-
-### Main
-add_library(${PROJECT_NAME} STATIC ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
-# target_compile_options(${PROJECT_NAME} PRIVATE -pthread)
-
-### link Dependencies
 # target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB})
 
 ### Transparency
@@ -69,12 +92,20 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_PRIVATE)
 
 ### install library select
-# set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "lib1.h")
-install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}-targets
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+include(GNUInstallDirs)
+install(TARGETS ${PROJECT_NAME}
+  EXPORT
+    ${PROJECT_NAME}-targets
+  LIBRARY DESTINATION
+    ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION
+    ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION
+    ${CMAKE_INSTALL_BINDIR}
+  PUBLIC_HEADER DESTINATION
+    ${CMAKE_INSTALL_INCLUDEDIR}
+  FILE_SET ${PROJECT_NAME}_FILE_SET DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+  CXX_MODULES_BMI DESTINATION "")
 
 install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>include/${PROJECT_NAME}
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
@@ -82,25 +113,22 @@ install(DIRECTORY $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>include/${PROJECT_NAM
 install(EXPORT ${PROJECT_NAME}-targets
   FILE ${PROJECT_NAME}-targets.cmake
   NAMESPACE ${PROJECT_NAME}::
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})
-
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}) ### package config
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
+    VERSION ${CMAKE_PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
 file(WRITE
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cmake.in
   "@PACKAGE_INIT@\n"
   "include(CMakeFindDependencyMacro)\n"
   # "find_dependency(${lib} CONFIG REQUIRED)\n"
-  "include(\"\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}-targets.cmake\")\n"
+  "include(\"\${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake\")\n"
   "check_required_components(\"@PROJECT_NAME@\")")
-include(CMakePackageConfigHelpers)
 configure_package_config_file(
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})
-
-
-# ### Test Dependencies
-# # find_package(Boost REQUIRED COMPONENTS test)
-# find_package(Boost REQUIRED COMPONENTS unit_test_framework)
-# add_subdirectory(${PROJECT_SOURCE_DIR}/test)
