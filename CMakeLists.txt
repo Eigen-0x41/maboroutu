@@ -16,7 +16,7 @@ endif()
 #endif()
 
 project(maboroutu
-    VERSION 0.0.2.4
+    VERSION 0.0.2.5
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -36,8 +36,7 @@ endif()
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(${PROJECT_NAME} PRIVATE
-    /std:c++latest)
+  # target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
 else()
   target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
 endif()
