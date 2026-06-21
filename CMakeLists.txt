@@ -16,7 +16,7 @@ endif()
 #endif()
 
 project(maboroutu
-    VERSION 0.0.2.15
+    VERSION 0.0.2.16
     DESCRIPTION "Eigen's personal C++ utility library."
     HOMEPAGE_URL ""
     LANGUAGES CXX
@@ -34,7 +34,7 @@ else()
   add_library(${PROJECT_NAME} STATIC)
 endif()
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_26)
 
 file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
   "${PROJECT_SOURCE_DIR}/src/*.cppm")
