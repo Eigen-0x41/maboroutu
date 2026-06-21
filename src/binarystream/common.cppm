@@ -57,27 +57,27 @@ template <class CharT, class T> struct make_convert_vector {
 
 template <class T> constexpr auto wrap_byteswap(T value) -> T {
 #if defined(UINT8_MAX)
-  if (sizeof(T) == sizeof(uint8_t)) {
+  if constexpr (sizeof(T) == sizeof(uint8_t)) {
     return std::bit_cast<T>(std::byteswap(std::bit_cast<uint8_t>(value)));
   }
 #endif
 #if defined(UINT16_MAX)
-  if (sizeof(T) == sizeof(uint16_t)) {
+  if constexpr (sizeof(T) == sizeof(uint16_t)) {
     return std::bit_cast<T>(std::byteswap(std::bit_cast<uint16_t>(value)));
   }
 #endif
 #if defined(UINT32_MAX)
-  if (sizeof(T) == sizeof(uint32_t)) {
+  if constexpr (sizeof(T) == sizeof(uint32_t)) {
     return std::bit_cast<T>(std::byteswap(std::bit_cast<uint32_t>(value)));
   }
 #endif
 #if defined(UINT64_MAX)
-  if (sizeof(T) == sizeof(uint64_t)) {
+  if constexpr (sizeof(T) == sizeof(uint64_t)) {
     return std::bit_cast<T>(std::byteswap(std::bit_cast<uint64_t>(value)));
   }
 #endif
 #if defined(UINT128_MAX)
-  if (sizeof(T) == sizeof(uint128_t)) {
+  if constexpr (sizeof(T) == sizeof(uint128_t)) {
     return std::bit_cast<T>(std::byteswap(std::bit_cast<uint128_t>(value)));
   }
 #endif
