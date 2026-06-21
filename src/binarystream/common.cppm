@@ -88,9 +88,9 @@ template <class T>
 concept numberable =
     std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>;
 
-template <numberable T> constexpr void member_byte_swap(T &value) {
+template <class T> constexpr void member_byte_swap(T &value) {
 #pragma unroll 4
-  for (auto &member : value) {
+  for (numberable auto &member : value) {
     member = wrap_byteswap(member);
   }
 }
