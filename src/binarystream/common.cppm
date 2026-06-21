@@ -3,8 +3,10 @@ module;
 #include <bit>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <ratio>
+#include <type_traits>
 #include <vector>
 
 export module maboroutu.binarystream:common;
@@ -53,10 +55,43 @@ template <class CharT, class T> struct make_convert_vector {
   }
 };
 
-template <class T> void member_byte_swap(T &value) {
+template <class T> constexpr auto wrap_byteswap(T value) -> T {
+#if defined(UINT8_MAX)
+  if (sizeof(T) == sizeof(uint8_t)) {
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<uint8_t>(value)));
+  }
+#endif
+#if defined(UINT16_MAX)
+  if (sizeof(T) == sizeof(uint16_t)) {
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<uint16_t>(value)));
+  }
+#endif
+#if defined(UINT32_MAX)
+  if (sizeof(T) == sizeof(uint32_t)) {
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<uint32_t>(value)));
+  }
+#endif
+#if defined(UINT64_MAX)
+  if (sizeof(T) == sizeof(uint64_t)) {
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<uint64_t>(value)));
+  }
+#endif
+#if defined(UINT128_MAX)
+  if (sizeof(T) == sizeof(uint128_t)) {
+    return std::bit_cast<T>(std::byteswap(std::bit_cast<uint128_t>(value)));
+  }
+#endif
+  assert(false);
+}
+
+template <class T>
+concept numberable =
+    std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>;
+
+template <numberable T> constexpr void member_byte_swap(T &value) {
 #pragma unroll 4
   for (auto &member : value) {
-    member = std::byteswap(member);
+    member = wrap_byteswap(member);
   }
 }
 } // namespace maboroutu

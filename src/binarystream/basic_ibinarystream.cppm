@@ -57,7 +57,7 @@ public:
   auto operator=(basic_ibinarystream &&) -> basic_ibinarystream & = default;
 
   using base_type::read;
-  template <std::endian Endian, std::integral ValueT>
+  template <std::endian Endian, numberable ValueT>
   auto read(this self_type &self) -> ValueT {
     ValueT ret_value = convert_array<ValueT, 1>::from(
         self._read_convert_array<ValueT, 1>())[0];
@@ -72,18 +72,12 @@ public:
     }
     return ret_value;
   }
-  template <std::endian Endian, std::floating_point FloatingPointT>
-  auto read(this self_type &self) -> FloatingPointT {
-    if constexpr (sizeof(FloatingPointT) == sizeof(uint32_t)) {
-      return std::bit_cast<FloatingPointT>(self.read<Endian, uint32_t>());
-    }
-    if constexpr (sizeof(FloatingPointT) == sizeof(uint64_t)) {
-      return std::bit_cast<FloatingPointT>(self.read<Endian, uint64_t>());
-    } else {
-      static_assert(true, "value is not support.");
-    }
+  auto read_byte(this self_type &self) -> std::byte {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_array<std::byte, 1>::from(
+        self._read_convert_array<std::byte, 1>())[0];
   }
-  template <std::endian Endian, std::integral ValueT, size_t Size>
+  template <std::endian Endian, numberable ValueT, size_t Size>
   auto read_array(this self_type &self) -> std::array<ValueT, Size> {
     std::array<ValueT, Size> ret_value = convert_array<ValueT, Size>::from(
         self._read_convert_array<ValueT, Size>());
@@ -98,7 +92,13 @@ public:
     }
     return ret_value;
   }
-  template <std::endian Endian, std::integral ValueT>
+  template <size_t Size>
+  auto read_byte_array(this self_type &self) -> std::array<std::byte, Size> {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_array<std::byte, Size>::from(
+        self._read_convert_array<std::byte, Size>());
+  }
+  template <std::endian Endian, numberable ValueT>
   auto read_vector(this self_type &self, size_t size) -> std::vector<ValueT> {
     std::vector<ValueT> ret_value =
         convert_vector<ValueT>::from(self._read_convert_vector<ValueT>(size));
@@ -112,6 +112,12 @@ public:
       }
     }
     return ret_value;
+  }
+  auto read_byte_vector(this self_type &self, size_t size)
+      -> std::vector<std::byte> {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_vector<std::byte>::from(
+        self._read_convert_vector<std::byte>(size));
   }
 };
 

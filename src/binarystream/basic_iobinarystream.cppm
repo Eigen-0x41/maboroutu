@@ -70,7 +70,7 @@ public:
   auto operator=(basic_iobinarystream &&) -> basic_iobinarystream & = default;
 
   using base_type::read;
-  template <std::endian Endian, std::integral ValueT>
+  template <std::endian Endian, numberable ValueT>
   auto read(this self_type &self) -> ValueT {
     ValueT ret_value = convert_array<ValueT, 1>::from(
         self._read_convert_array<ValueT, 1>())[0];
@@ -85,18 +85,12 @@ public:
     }
     return ret_value;
   }
-  template <std::endian Endian, std::floating_point FloatingPointT>
-  auto read(this self_type &self) -> FloatingPointT {
-    if constexpr (sizeof(FloatingPointT) == sizeof(uint32_t)) {
-      return std::bit_cast<FloatingPointT>(self.read<Endian, uint32_t>());
-    }
-    if constexpr (sizeof(FloatingPointT) == sizeof(uint64_t)) {
-      return std::bit_cast<FloatingPointT>(self.read<Endian, uint64_t>());
-    } else {
-      static_assert(true, "value is not support.");
-    }
+  auto read_byte(this self_type &self) -> std::byte {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_array<std::byte, 1>::from(
+        self._read_convert_array<std::byte, 1>())[0];
   }
-  template <std::endian Endian, std::integral ValueT, size_t Size>
+  template <std::endian Endian, numberable ValueT, size_t Size>
   auto read_array(this self_type &self) -> std::array<ValueT, Size> {
     std::array<ValueT, Size> ret_value = convert_array<ValueT, Size>::from(
         self._read_convert_array<ValueT, Size>());
@@ -111,7 +105,13 @@ public:
     }
     return ret_value;
   }
-  template <std::endian Endian, std::integral ValueT>
+  template <size_t Size>
+  auto read_byte_array(this self_type &self) -> std::array<std::byte, Size> {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_array<std::byte, Size>::from(
+        self._read_convert_array<std::byte, Size>());
+  }
+  template <std::endian Endian, numberable ValueT>
   auto read_vector(this self_type &self, size_t size) -> std::vector<ValueT> {
     std::vector<ValueT> ret_value =
         convert_vector<ValueT>::from(self._read_convert_vector<ValueT>(size));
@@ -126,9 +126,15 @@ public:
     }
     return ret_value;
   }
+  auto read_byte_vector(this self_type &self, size_t size)
+      -> std::vector<std::byte> {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    return convert_vector<std::byte>::from(
+        self._read_convert_vector<std::byte>(size));
+  }
 
   using base_type::write;
-  template <std::endian Endian, std::integral ValueT>
+  template <std::endian Endian, numberable ValueT>
   void write(this self_type &self, ValueT value) {
     if constexpr (Endian != std::endian::native) {
       static_assert(std::endian::native == std::endian::big ||
@@ -140,18 +146,12 @@ public:
 
     self._write_convert_array<ValueT, 1>(convert_array<ValueT, 1>::to(value));
   }
-  template <std::endian Endian, std::floating_point ValueT>
-  void write(this self_type &self, ValueT floating_point_v) {
-    if constexpr (sizeof(ValueT) == sizeof(uint32_t)) {
-      self.write<Endian, uint32_t>(std::bit_cast<uint32_t>(floating_point_v));
-    }
-    if constexpr (sizeof(ValueT) == sizeof(uint64_t)) {
-      self.write<Endian, uint64_t>(std::bit_cast<uint64_t>(floating_point_v));
-    } else {
-      static_assert(true, "value is not support.");
-    }
+  void write_byte(this self_type &self, std::byte value) {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    self._write_convert_array<std::byte, 1>(
+        convert_array<std::byte, 1>::to(value));
   }
-  template <std::endian Endian, std::integral ValueT, size_t Size>
+  template <std::endian Endian, numberable ValueT, size_t Size>
   void write_array(this self_type &self, std::array<ValueT, Size> value) {
     if constexpr (sizeof(ValueT) != 1) {
       if constexpr (Endian != std::endian::native) {
@@ -165,7 +165,14 @@ public:
     self._write_convert_array<ValueT, Size>(
         convert_array<ValueT, Size>::to(value));
   }
-  template <std::endian Endian, std::integral ValueT>
+  template <size_t Size>
+  void write_byte_array(this self_type &self,
+                        std::array<std::byte, Size> value) {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    self._write_convert_array<std::byte, Size>(
+        convert_array<std::byte, Size>::to(value));
+  }
+  template <std::endian Endian, numberable ValueT>
   void write_vector(this self_type &self, std::vector<ValueT> value) {
     if constexpr (sizeof(ValueT) != 1) {
       if constexpr (Endian != std::endian::native) {
@@ -177,6 +184,10 @@ public:
     }
 
     self._write_convert_vector<ValueT>(convert_vector<ValueT>::to(value));
+  }
+  void write_byte_array(this self_type &self, std::vector<std::byte> value) {
+    static_assert(sizeof(std::byte) == 1, "std::byte is not 1byte.");
+    self._write_convert_vector<std::byte>(convert_vector<std::byte>::to(value));
   }
 };
 
