@@ -5,6 +5,7 @@
 /*
 !/.gitignore
 !/.gitmodules
+!/.editorconfig
 
 #-allow list
 #--cxx
