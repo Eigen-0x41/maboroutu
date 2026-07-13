@@ -47,7 +47,7 @@ public:
   }
   constexpr auto value(this self_type const &self) noexcept
       -> value_type const & {
-    value_type *const ret_value = std::get_if<value_type>(&self._value);
+    value_type const *const ret_value = std::get_if<value_type>(&self._value);
     assert(ret_value != nullptr);
     return *ret_value;
   }
@@ -74,4 +74,4 @@ public:
   auto operator=(slot_map_node const &rhs) -> slot_map_node & = default;
   auto operator=(slot_map_node &&rhs) -> slot_map_node & = default;
 };
-}
+} // namespace maboroutu
