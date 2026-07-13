@@ -7,14 +7,14 @@ export module maboroutu.utility;
 namespace maboroutu {
 
 export template <class EnumT, EnumT EnumV>
-  requires std::is_enum_v<EnumT>
+   requires std::is_enum_v<EnumT>
 struct in_place_tag {
-  using value_type = EnumT;
-  static constexpr value_type value = EnumV;
+   using value_type = EnumT;
+   static constexpr value_type value = EnumV;
 
-  in_place_tag() = default;
-  in_place_tag(in_place_tag const &) = default;
-  in_place_tag(in_place_tag &&) = default;
+   in_place_tag() = default;
+   in_place_tag(in_place_tag const &) = default;
+   in_place_tag(in_place_tag &&) = default;
 };
 
 export template <auto EnumV>
