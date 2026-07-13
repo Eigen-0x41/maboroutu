@@ -1,6 +1,5 @@
 module;
 #include <bit>
-#include <concepts>
 
 export module maboroutu.utility;
 
