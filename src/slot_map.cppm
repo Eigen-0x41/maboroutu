@@ -106,7 +106,7 @@ class basic_slot_map {
          // target.construct(value);
 
          self._next_destroyed = target.next();
-         target.next() = self_type::npos;
+         target.next() = static_cast<size_type>(self_type::npos);
 
          // self._next_constructed = construct_target;
 
@@ -135,13 +135,13 @@ class basic_slot_map {
     */
    auto construct_at(this self_type &self, index_type key,
                      value_type const &value) -> index_type {
-      if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("Key is not contains.");
+      if (self.contains(key)) [[unlikely]] {
+         throw std::invalid_argument("Key is already constructed.");
       }
       node_type &target = self._continer[static_cast<size_type>(key)];
 
       if (target.has_value()) [[unlikely]] {
-         return static_cast<size_type>(self_type::npos);
+         return self_type::npos;
       }
 
       target.construct(value);
@@ -164,13 +164,13 @@ class basic_slot_map {
    template <class... ArgsT>
    auto construct_at(this self_type &self, index_type key, ArgsT &&...args)
        -> index_type {
-      if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("Key is not contains.");
+      if (self.contains(key)) [[unlikely]] {
+         throw std::invalid_argument("Key is already constructed.");
       }
       node_type &target = self._continer[static_cast<size_type>(key)];
 
       if (target.has_value()) [[unlikely]] {
-         return static_cast<size_type>(self_type::npos);
+         return self_type::npos;
       }
 
       target.construct(std::forward<ArgsT>(args)...);
