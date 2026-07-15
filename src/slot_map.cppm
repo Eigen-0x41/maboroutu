@@ -126,6 +126,62 @@ class basic_slot_map {
       }
       throw std::out_of_range("_continer is not have push_back().");
    }
+   /**
+    * @brief insert value
+    *
+    * @param key reserved key
+    * @param value construct value
+    * @return if error then, return npos. else of return [@param key].
+    */
+   auto construct_at(this self_type &self, index_type key,
+                     value_type const &value) -> index_type {
+      if (!self.contains(key)) [[unlikely]] {
+         throw std::out_of_range("Key is not contains.");
+      }
+      node_type &target = self._continer[static_cast<size_type>(key)];
+
+      if (target.has_value()) [[unlikely]] {
+         return static_cast<size_type>(self_type::npos);
+      }
+
+      target.construct(value);
+
+      target.next() = self._next_constructed;
+
+      self._next_constructed = static_cast<size_type>(key);
+
+      ++self._size;
+      return key;
+   }
+   /**
+    * @brief emplace value
+    *
+    * @tparam ArgsT type for [@param args].
+    * @tparam ArgsT reserved key
+    * @param args construct value
+    * @return if error then, return npos. else of return [@param key].
+    */
+   template <class... ArgsT>
+   auto construct_at(this self_type &self, index_type key, ArgsT &&...args)
+       -> index_type {
+      if (!self.contains(key)) [[unlikely]] {
+         throw std::out_of_range("Key is not contains.");
+      }
+      node_type &target = self._continer[static_cast<size_type>(key)];
+
+      if (target.has_value()) [[unlikely]] {
+         return static_cast<size_type>(self_type::npos);
+      }
+
+      target.construct(std::forward<ArgsT>(args)...);
+
+      target.next() = self._next_constructed;
+
+      self._next_constructed = static_cast<size_type>(key);
+
+      ++self._size;
+      return key;
+   }
 
    auto insert(this self_type &self, value_type const &value) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
@@ -153,33 +209,6 @@ class basic_slot_map {
          return static_cast<index_type>(construct_target);
       }
       throw std::out_of_range("_continer is not have push_back().");
-   }
-   /**
-    * @brief insert value
-    *
-    * @param key reserved key
-    * @param value construct value
-    * @return if error then, return npos. else of return [@param key].
-    */
-   auto insert(this self_type &self, index_type key, value_type const &value)
-       -> index_type {
-      if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("Key is not contains.");
-      }
-      node_type &target = self._continer[static_cast<size_type>(key)];
-
-      if (target.has_value()) [[unlikely]] {
-         return static_cast<size_type>(self_type::npos);
-      }
-
-      target.construct(value);
-
-      target.next() = self._next_constructed;
-
-      self._next_constructed = static_cast<size_type>(key);
-
-      ++self._size;
-      return key;
    }
 
    template <class... ArgsT>
@@ -210,35 +239,6 @@ class basic_slot_map {
          return static_cast<index_type>(construct_target);
       }
       throw std::out_of_range("_continer is not have emplace_back().");
-   }
-   /**
-    * @brief emplace value
-    *
-    * @tparam ArgsT type for [@param args].
-    * @tparam ArgsT reserved key
-    * @param args construct value
-    * @return if error then, return npos. else of return [@param key].
-    */
-   template <class... ArgsT>
-   auto emplace(this self_type &self, index_type key, ArgsT &&...args)
-       -> index_type {
-      if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("Key is not contains.");
-      }
-      node_type &target = self._continer[static_cast<size_type>(key)];
-
-      if (target.has_value()) [[unlikely]] {
-         return static_cast<size_type>(self_type::npos);
-      }
-
-      target.construct(std::forward<ArgsT>(args)...);
-
-      target.next() = self._next_constructed;
-
-      self._next_constructed = static_cast<size_type>(key);
-
-      ++self._size;
-      return key;
    }
 
    auto erase(this self_type &self, index_type const key) -> index_type {
