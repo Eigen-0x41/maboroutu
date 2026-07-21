@@ -306,18 +306,18 @@ auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
             typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
     -> basic_slot_map<IndexT, T, MakeContinerT>::value_type * {
    if (!slot_map.contains(index)) [[unlikely]] {
-      return &slot_map[index];
+      return nullptr;
    }
-   return nullptr;
+   return &slot_map[index];
 }
 export template <class IndexT, class T, class MakeContinerT>
 auto get_if(basic_slot_map<IndexT, T, MakeContinerT> const &slot_map,
             typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
     -> basic_slot_map<IndexT, T, MakeContinerT>::value_type const * {
    if (!slot_map.contains(index)) [[unlikely]] {
-      return &slot_map[index];
+      return nullptr;
    }
-   return nullptr;
+   return &slot_map[index];
 }
 
 struct make_deque {
