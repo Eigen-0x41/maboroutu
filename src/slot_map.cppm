@@ -299,21 +299,26 @@ class basic_slot_map {
 
    auto operator=(basic_slot_map const &rhs) -> basic_slot_map & = default;
    auto operator=(basic_slot_map &&rhs) -> basic_slot_map & = default;
-
-   friend auto get_if(self_type &self, index_type index) -> value_type * {
-      if (!self.contains(index)) [[unlikely]] {
-         return &self[index];
-      }
-      return nullptr;
-   }
-   friend auto get_if(self_type const &self, index_type index)
-       -> value_type const * {
-      if (!self.contains(index)) [[unlikely]] {
-         return &self[index];
-      }
-      return nullptr;
-   }
 };
+
+export template <class IndexT, class T, class MakeContinerT>
+auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
+            typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
+    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type * {
+   if (!slot_map.contains(index)) [[unlikely]] {
+      return &slot_map[index];
+   }
+   return nullptr;
+}
+export template <class IndexT, class T, class MakeContinerT>
+auto get_if(basic_slot_map<IndexT, T, MakeContinerT> const &slot_map,
+            typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
+    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type const * {
+   if (!slot_map.contains(index)) [[unlikely]] {
+      return &slot_map[index];
+   }
+   return nullptr;
+}
 
 struct make_deque {
    template <class T> using type = typename std::deque<T>;
