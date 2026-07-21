@@ -299,6 +299,20 @@ class basic_slot_map {
 
    auto operator=(basic_slot_map const &rhs) -> basic_slot_map & = default;
    auto operator=(basic_slot_map &&rhs) -> basic_slot_map & = default;
+
+   friend auto get_if(self_type &self, index_type index) -> value_type * {
+      if (!self.contains(index)) [[unlikely]] {
+         return &self[index];
+      }
+      return nullptr;
+   }
+   friend auto get_if(self_type const &self, index_type index)
+       -> value_type const * {
+      if (!self.contains(index)) [[unlikely]] {
+         return &self[index];
+      }
+      return nullptr;
+   }
 };
 
 struct make_deque {
