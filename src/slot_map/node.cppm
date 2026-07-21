@@ -9,35 +9,47 @@ template <class DependT, class T> class slot_map_node {
  public: /*STRUCT_FIELD*/
    using value_type = T;
    using size_type = size_t;
+   struct link {
+      size_type prev;
+      size_type next;
+   };
 
  protected:
  private:
-   size_type _next;
-   std::variant<std::monostate, value_type> _value;
+   link _link{
+       .prev = static_cast<size_type>(DependT::npos),
+       .next = static_cast<size_type>(DependT::npos),
+   };
+   std::variant<std::monostate, value_type> _value{};
 
    using self_type = slot_map_node;
    /*--:  *IMPLIMENT_FIELD*/
  protected:
  public:
-   slot_map_node() : _next(static_cast<size_type>(DependT::npos)), _value() {}
-   slot_map_node(slot_map_node const &rhs)
-       : _next(rhs._value), _value(rhs._value) {}
-   slot_map_node(slot_map_node &&rhs) noexcept
-       : _next(rhs._next), _value(std::move(rhs._value)) {}
-   slot_map_node(value_type const &value)
-       : _next(static_cast<size_type>(DependT::npos)), _value(value) {}
+   slot_map_node() = default;
+   slot_map_node(slot_map_node const &rhs) = default;
+   slot_map_node(slot_map_node &&rhs) noexcept = default;
+   slot_map_node(link link, value_type const &value)
+       : _link(link), _value(value) {}
    template <class... ArgsT>
-   slot_map_node(ArgsT &&...args)
-       : _next(static_cast<size_type>(DependT::npos)),
+   slot_map_node(link link, ArgsT &&...args)
+       : _link(link),
          _value(std::in_place_type<value_type>, std::forward<ArgsT>(args)...) {}
    ~slot_map_node() = default;
 
+   constexpr auto prev(this self_type &self) noexcept -> size_type & {
+      return self._link.prev;
+   }
+   [[nodiscard]] constexpr auto prev(this self_type const &self) noexcept
+       -> size_type const & {
+      return self._link.prev;
+   }
    constexpr auto next(this self_type &self) noexcept -> size_type & {
-      return self._next;
+      return self._link.next;
    }
    [[nodiscard]] constexpr auto next(this self_type const &self) noexcept
        -> size_type const & {
-      return self._next;
+      return self._link.next;
    }
 
    constexpr auto value(this self_type &self) noexcept -> value_type & {
