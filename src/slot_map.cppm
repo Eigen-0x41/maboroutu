@@ -5,6 +5,7 @@ module;
 #include <ranges>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 export module maboroutu.slot_map;
 import :node;
 
@@ -16,7 +17,10 @@ export template <class IndexT, class T, class MakeContinerT>
 class basic_slot_map {
  public: /*STRUCT_FIELD*/
    using index_type = IndexT;
-   using value_type = T;
+   using mapped_type = T;
+   using vvalue_type = std::pair<const index_type, mapped_type>;
+   using reference = std::pair<const index_type, mapped_type &>;
+   using const_reference = std::pair<const index_type, mapped_type const &>;
    using size_type = size_t;
 
    static const index_type npos = static_cast<index_type>(-1);
@@ -34,7 +38,7 @@ class basic_slot_map {
     public: /*STRUCT_FIELD*/
       using difference_type = int;
       using value_type =
-          typename std::conditional_t<IsConst, value_type, value_type const>;
+          typename std::conditional_t<IsConst, mapped_type, mapped_type const>;
       using iterator_concept = std::bidirectional_iterator_tag;
 
     protected:
@@ -84,10 +88,10 @@ class basic_slot_map {
          return ret_value;
       }
 
-      friend constexpr auto operator*(self_type const &self) -> value_type & {
+      friend constexpr auto operator*(self_type const &self) -> reference {
          auto &data = self._data->_container[self._idx_s];
          assert(data.has_value());
-         return data.value();
+         return {self._idx_s, data.value()};
       }
 
       friend constexpr auto operator==(self_type const &lhs,
@@ -146,14 +150,14 @@ class basic_slot_map {
       return bool(self._container[idx]);
    }
 
-   auto at(this self_type &self, index_type const key) -> value_type & {
+   auto at(this self_type &self, index_type const key) -> mapped_type & {
       if (!self.contains(key)) [[unlikely]] {
          throw std::out_of_range("Key is not contains");
       }
       return self._container[static_cast<size_type>(key)].value();
    }
    auto at(this self_type const &self, index_type const key)
-       -> value_type const & {
+       -> mapped_type const & {
       if (!self.contains(key)) [[unlikely]] {
          throw std::out_of_range("Key is not contains");
       }
@@ -161,12 +165,12 @@ class basic_slot_map {
    }
 
    auto operator[](this self_type &self, index_type const key) noexcept
-       -> value_type & {
+       -> mapped_type & {
       assert(self.contains(key));
       return self._container[static_cast<size_type>(key)].value();
    }
    auto operator[](this self_type const &self, index_type const key) noexcept
-       -> value_type const & {
+       -> mapped_type const & {
       assert(self.contains(key));
       return self._container[static_cast<size_type>(key)].value();
    }
@@ -216,7 +220,7 @@ class basic_slot_map {
     * @return if error then, return npos. else of return [@param key].
     */
    auto construct_at(this self_type &self, index_type key,
-                     value_type const &value) -> index_type {
+                     mapped_type const &value) -> index_type {
       if (self.contains(key)) [[unlikely]] {
          throw std::invalid_argument("Key is already constructed.");
       }
@@ -284,7 +288,7 @@ class basic_slot_map {
       return key;
    }
 
-   auto insert(this self_type &self, value_type const &value) -> index_type {
+   auto insert(this self_type &self, mapped_type const &value) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
          size_type construct_target = self._next_destroyed;
          node_type &target = self._container[construct_target];
@@ -502,7 +506,7 @@ class basic_slot_map {
 export template <class IndexT, class T, class MakeContinerT>
 auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
             typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
-    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type * {
+    -> basic_slot_map<IndexT, T, MakeContinerT>::mapped_type * {
    if (!slot_map.contains(index)) [[unlikely]] {
       return nullptr;
    }
@@ -511,7 +515,7 @@ auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
 export template <class IndexT, class T, class MakeContinerT>
 auto get_if(basic_slot_map<IndexT, T, MakeContinerT> const &slot_map,
             typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
-    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type const * {
+    -> basic_slot_map<IndexT, T, MakeContinerT>::mapped_type const * {
    if (!slot_map.contains(index)) [[unlikely]] {
       return nullptr;
    }
