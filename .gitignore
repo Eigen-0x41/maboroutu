@@ -5,12 +5,28 @@
 /*
 !/.gitignore
 !/.gitmodules
+!/.editorconfig
 
 #-allow list
+#--cxx
 !/include/
 !/include/*
+!/include_disable/
+!/include_disable/*
+!/lib/
+!/lib/*
 !/src/
 !/src/*
+!/test/
+!/test/*
 
+!/.clang-format
+!/.clang-tidy
 !/CMakeLists.txt
 !/LICENSE
+
+#--vcpkg
+!/portfile.cmake
+!/usage
+!/vcpkg-configuration.json
+!/vcpkg.json
