@@ -1,7 +1,9 @@
 module;
 #include <cassert>
+#include <concepts>
 #include <deque>
 #include <iterator>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 #include <type_traits>
@@ -11,9 +13,17 @@ import :node;
 
 namespace maboroutu {
 
+/**
+ * @brief slot_map base
+ * enumを使用することでindexに数値が混入することを防いでいます
+ * 要素数がIndexTの最大値-1以上となる場合の動作は未定義です。
+ * stlに準処している配列型であれば大体のコンテナで使用可能です。
+ *
+ */
 // [[basic_slot_map]]
 export template <class IndexT, class T, class MakeContinerT>
-   requires std::is_enum_v<IndexT>
+   requires std::is_enum_v<IndexT> &&
+            std::unsigned_integral<std::underlying_type_t<IndexT>>
 class basic_slot_map {
  public: /*STRUCT_FIELD*/
    using index_type = IndexT;
@@ -26,7 +36,8 @@ class basic_slot_map {
  private:
    using self_type = basic_slot_map;
 
-   using node_type = slot_map_node<basic_slot_map, T>;
+   using iindex_type = std::underlying_type_t<index_type>;
+   using node_type = slot_map_node<basic_slot_map, T, iindex_type>;
    using continer_type = MakeContinerT::template type<node_type>;
 
    template <bool IsConst>
@@ -59,10 +70,10 @@ class basic_slot_map {
       friend basic_slot_map;
 
       depend_type *_data;
-      size_type _idx_s;
+      iindex_type _idx_s;
 
       /*--:  *IMPLIMENT_FIELD*/
-      basic_iterator(depend_type *data, size_type idx_s)
+      explicit basic_iterator(depend_type *data, iindex_type idx_s)
           : _data(data), _idx_s(idx_s) {}
 
     protected:
@@ -74,7 +85,7 @@ class basic_slot_map {
 
       friend constexpr auto operator++(self_type &self) -> self_type & {
          self._idx_s =
-             (static_cast<size_type>(depend_type::npos) != self._idx_s)
+             (static_cast<iindex_type>(depend_type::npos) != self._idx_s)
                  ? self._data->_container[self._idx_s].next()
                  : self._data->_next_constructed;
          return self;
@@ -87,7 +98,7 @@ class basic_slot_map {
 
       friend constexpr auto operator--(self_type &self) -> self_type & {
          self._idx_s =
-             (static_cast<size_type>(depend_type::npos) != self._idx_s)
+             (static_cast<iindex_type>(depend_type::npos) != self._idx_s)
                  ? self._data->_container[self._idx_s].prev()
                  : self._data->_rnext_constructed;
          return self;
@@ -119,15 +130,15 @@ class basic_slot_map {
    };
 
    continer_type _container{};
-   size_type _next_constructed = static_cast<size_type>(self_type::npos);
-   size_type _rnext_constructed = static_cast<size_type>(self_type::npos);
-   size_type _next_destroyed = static_cast<size_type>(self_type::npos);
+   iindex_type _next_constructed = static_cast<iindex_type>(self_type::npos);
+   iindex_type _rnext_constructed = static_cast<iindex_type>(self_type::npos);
+   iindex_type _next_destroyed = static_cast<iindex_type>(self_type::npos);
    size_type _size = 0;
    size_type _free_size = 0;
 
    /*--:  *IMPLIMENT_FIELD*/
-   static constexpr auto is_npos(size_type key) noexcept -> bool {
-      return key == static_cast<size_type>(self_type::npos);
+   static constexpr auto is_npos(iindex_type key) noexcept -> bool {
+      return key == static_cast<iindex_type>(self_type::npos);
    }
 
  protected:
@@ -138,14 +149,17 @@ class basic_slot_map {
    basic_slot_map() {
       // 最適化されることを望む。
       if (_container.size() != 0) {
+         assert(_container.size() <
+                std::numeric_limits<iindex_type>::max() - 1);
          _free_size = _container.size();
 #pragma unroll 8
          for (auto &&[idx, node] :
               std::views::zip(std::views::iota(0), _container)) {
-            node.prev() = idx - 1;
-            node.next() = idx + 1;
+            node.prev() = iindex_type(idx) - 1;
+            node.next() = iindex_type(idx) + 1;
          }
 
+         _container.back().next() = static_cast<iindex_type>(self_type::npos);
          _next_destroyed = 0;
       }
    }
@@ -155,7 +169,7 @@ class basic_slot_map {
 
    [[nodiscard]] auto contains(this self_type const &self,
                                index_type const index) noexcept -> bool {
-      auto idx = static_cast<size_type>(index);
+      auto idx = static_cast<iindex_type>(index);
       if (self_type::is_npos(idx)) [[unlikely]] {
          return false;
       }
@@ -169,25 +183,25 @@ class basic_slot_map {
       if (!self.contains(key)) [[unlikely]] {
          throw std::out_of_range("Key is not contains");
       }
-      return self._container[static_cast<size_type>(key)].value();
+      return self._container[static_cast<iindex_type>(key)].value();
    }
    auto at(this self_type const &self, index_type const key)
        -> value_type const & {
       if (!self.contains(key)) [[unlikely]] {
          throw std::out_of_range("Key is not contains");
       }
-      return self._container[static_cast<size_type>(key)].value();
+      return self._container[static_cast<iindex_type>(key)].value();
    }
 
    auto operator[](this self_type &self, index_type const key) noexcept
        -> value_type & {
       assert(self.contains(key));
-      return self._container[static_cast<size_type>(key)].value();
+      return self._container[static_cast<iindex_type>(key)].value();
    }
    auto operator[](this self_type const &self, index_type const key) noexcept
        -> value_type const & {
       assert(self.contains(key));
-      return self._container[static_cast<size_type>(key)].value();
+      return self._container[static_cast<iindex_type>(key)].value();
    }
 
    [[nodiscard]] auto size(this self_type const &self) noexcept -> size_type {
@@ -198,49 +212,63 @@ class basic_slot_map {
       return self._free_size;
    }
 
-   [[nodiscard]] auto reserve(this self_type &self) -> index_type {
+   [[nodiscard]] auto checkout(this self_type &self) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
-         size_type construct_target = self._next_destroyed;
+         iindex_type construct_target = self._next_destroyed;
          node_type &target = self._container[construct_target];
 
-         // target.construct(value);
-
          self._next_destroyed = target.next();
-         target.prev() = static_cast<size_type>(self_type::npos);
-         target.next() = static_cast<size_type>(self_type::npos);
-
-         // self._next_constructed = construct_target;
+         target.prev() = static_cast<iindex_type>(self_type::npos);
+         target.next() = static_cast<iindex_type>(self_type::npos);
 
          --self._free_size;
-         // ++self._size;
          return static_cast<index_type>(construct_target);
       }
 
       if constexpr (requires() { self._container.push_back(node_type()); }) {
 
-         size_type construct_target(self._container.size());
+         iindex_type construct_target(self._container.size());
          self._container.push_back(node_type());
-         self._next_constructed = construct_target;
 
-         // ++self._size;
          return static_cast<index_type>(construct_target);
       }
       throw std::out_of_range("_container is not have push_back().");
    }
+
+   /**
+    * @brief calncelling checkout
+    * key は checkout() が返した、かつ
+    * construct_at()をまだ呼んでいないキーであることを呼び出し側が保証すること。
+    * slot_mapが発行していないキー、既にconstruct_at()済みまたはerase()済みのキー、
+    * npos または範囲外のキーを渡した場合の動作は未定義とする。
+    *
+    * @param key [TODO:parameter]
+    */
+   auto cancel(this self_type &self, index_type key) -> void {
+      node_type &target = self._container[static_cast<iindex_type>(key)];
+      assert(!target.has_value());
+
+      target.next() = self._next_destroyed;
+      self._next_destroyed = static_cast<iindex_type>(key);
+      ++self._free_size;
+   }
+
    /**
     * @brief insert value
     *
-    * @param key reserved key
+    * @param key checkouted key
     * @param value construct value
     * @return if error then, return npos. else of return [@param key].
+    * @note key が checkout() が返した、かつ construct_at() 未呼び出しの
+    *       キーであることを呼び出し側が保証すること。key が npos または
+    *       範囲外の場合の動作は未定義とする。
     */
    auto construct_at(this self_type &self, index_type key,
                      value_type const &value) -> index_type {
-      if (self.contains(key)) [[unlikely]] {
-         throw std::invalid_argument("Key is already constructed.");
-      }
+      assert(!self_type::is_npos(static_cast<iindex_type>(key)));
+      assert(static_cast<iindex_type>(key) < self._container.size());
 
-      node_type &target = self._container[static_cast<size_type>(key)];
+      node_type &target = self._container[static_cast<iindex_type>(key)];
 
       if (target.has_value()) [[unlikely]] {
          return self_type::npos;
@@ -249,36 +277,38 @@ class basic_slot_map {
       target.construct(value);
 
       // construct linking
-      target.prev() = static_cast<size_type>(self_type::npos);
+      target.prev() = static_cast<iindex_type>(self_type::npos);
       if (self.size() != 0) [[likely]] {
          auto &next = self._container[self._next_constructed];
          assert(self_type::is_npos(next.prev()));
-         next.prev() = static_cast<size_type>(key);
+         next.prev() = static_cast<iindex_type>(key);
       } else {
-         self._rnext_constructed = static_cast<size_type>(key);
+         self._rnext_constructed = static_cast<iindex_type>(key);
       }
 
       target.next() = self._next_constructed;
-      self._next_constructed = static_cast<size_type>(key);
+      self._next_constructed = static_cast<iindex_type>(key);
 
       ++self._size;
       return key;
    }
    /**
-    * @brief emplace value
+    * @brief insert value
     *
-    * @tparam ArgsT type for [@param args].
-    * @tparam ArgsT reserved key
-    * @param args construct value
+    * @param key checkouted key
+    * @param value construct value
     * @return if error then, return npos. else of return [@param key].
+    * @note key が checkout() が返した、かつ construct_at() 未呼び出しの
+    *       キーであることを呼び出し側が保証すること。key が npos または
+    *       範囲外の場合の動作は未定義とする。
     */
    template <class... ArgsT>
    auto construct_at(this self_type &self, index_type key, ArgsT &&...args)
        -> index_type {
-      if (self.contains(key)) [[unlikely]] {
-         throw std::invalid_argument("Key is already constructed.");
-      }
-      node_type &target = self._container[static_cast<size_type>(key)];
+      assert(!self_type::is_npos(static_cast<iindex_type>(key)));
+      assert(static_cast<iindex_type>(key) < self._container.size());
+
+      node_type &target = self._container[static_cast<iindex_type>(key)];
 
       if (target.has_value()) [[unlikely]] {
          return self_type::npos;
@@ -287,17 +317,17 @@ class basic_slot_map {
       target.construct(std::forward<ArgsT>(args)...);
 
       // construct linking
-      target.prev() = static_cast<size_type>(self_type::npos);
+      target.prev() = static_cast<iindex_type>(self_type::npos);
       if (self.size() != 0) [[likely]] {
          auto &next = self._container[self._next_constructed];
          assert(self_type::is_npos(next.prev()));
-         next.prev() = static_cast<size_type>(key);
+         next.prev() = static_cast<iindex_type>(key);
       } else {
-         self._rnext_constructed = static_cast<size_type>(key);
+         self._rnext_constructed = static_cast<iindex_type>(key);
       }
 
       target.next() = self._next_constructed;
-      self._next_constructed = static_cast<size_type>(key);
+      self._next_constructed = static_cast<iindex_type>(key);
 
       ++self._size;
       return key;
@@ -305,14 +335,14 @@ class basic_slot_map {
 
    auto insert(this self_type &self, value_type const &value) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
-         size_type construct_target = self._next_destroyed;
+         iindex_type construct_target = self._next_destroyed;
          node_type &target = self._container[construct_target];
 
          target.construct(value);
          self._next_destroyed = target.next();
 
          // construct linking
-         target.prev() = static_cast<size_type>(self_type::npos);
+         target.prev() = static_cast<iindex_type>(self_type::npos);
          if (self.size() != 0) [[likely]] {
             auto &next = self._container[self._next_constructed];
             assert(self_type::is_npos(next.prev()));
@@ -332,15 +362,16 @@ class basic_slot_map {
       if constexpr (requires() {
                        self._container.push_back(node_type(
                            {
-                               .prev = static_cast<size_type>(self_type::npos),
+                               .prev =
+                                   static_cast<iindex_type>(self_type::npos),
                                .next = self._next_constructed,
                            },
                            value));
                     }) {
-         size_type construct_target(self._container.size());
+         iindex_type construct_target(self._container.size());
          self._container.push_back(node_type(
              {
-                 .prev = static_cast<size_type>(self_type::npos),
+                 .prev = static_cast<iindex_type>(self_type::npos),
                  .next = self._next_constructed,
              },
              value));
@@ -361,14 +392,14 @@ class basic_slot_map {
    template <class... ArgsT>
    auto emplace(this self_type &self, ArgsT &&...args) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
-         size_type construct_target = self._next_destroyed;
+         iindex_type construct_target = self._next_destroyed;
          node_type &target = self._container[construct_target];
 
          target.construct(std::forward<ArgsT>(args)...);
          self._next_destroyed = target.next();
 
          // construct linking
-         target.prev() = static_cast<size_type>(self_type::npos);
+         target.prev() = static_cast<iindex_type>(self_type::npos);
          if (self.size() != 0) [[likely]] {
             auto &next = self._container[self._next_constructed];
             assert(self_type::is_npos(next.prev()));
@@ -388,15 +419,16 @@ class basic_slot_map {
       if constexpr (requires() {
                        self._container.emplace_back(
                            typename node_type::link{
-                               .prev = static_cast<size_type>(self_type::npos),
+                               .prev =
+                                   static_cast<iindex_type>(self_type::npos),
                                .next = self._next_constructed,
                            },
                            std::forward<ArgsT>(args)...);
                     }) {
-         size_type construct_target(self._container.size());
+         iindex_type construct_target(self._container.size());
          self._container.push_back(node_type(
              {
-                 .prev = static_cast<size_type>(self_type::npos),
+                 .prev = static_cast<iindex_type>(self_type::npos),
                  .next = self._next_constructed,
              },
              std::forward<ArgsT>(args)...));
@@ -419,7 +451,7 @@ class basic_slot_map {
          throw std::out_of_range("Key is not contains.");
       }
 
-      node_type &target = self._container[static_cast<size_type>(key)];
+      node_type &target = self._container[static_cast<iindex_type>(key)];
       auto prev_idx = target.prev();
 
       target.destroy();
@@ -439,59 +471,51 @@ class basic_slot_map {
          self._rnext_constructed = target.prev();
          if (!self_type::is_npos(target.prev())) [[likely]] {
             auto &prev = self._container[target.prev()];
-            prev.next() = static_cast<size_type>(self_type::npos);
+            prev.next() = static_cast<iindex_type>(self_type::npos);
          } else {
-            self._next_constructed = static_cast<size_type>(self_type::npos);
+            self._next_constructed = static_cast<iindex_type>(self_type::npos);
          }
       }
 
       target.next() = self._next_destroyed;
-      self._next_destroyed = static_cast<size_type>(key);
+      self._next_destroyed = static_cast<iindex_type>(key);
 #if !defined(NDEBUG)
       // MEMO: この値は現状使用されていません。
       //       assert()にて、初期化されていることを確認するために使用しています。
-      target.prev() = static_cast<size_type>(self_type::npos);
+      target.prev() = static_cast<iindex_type>(self_type::npos);
 #endif /*!defined(NDEBUG) */
 
       return static_cast<index_type>(prev_idx);
    }
 
-   constexpr void shrink(this self_type &self) {
-      size_type delete_value_begin_index = self._container.size();
-#pragma unroll 2
-      while (delete_value_begin_index != 0) {
-         --delete_value_begin_index;
-
-         if (self._container[delete_value_begin_index]) {
-            ++delete_value_begin_index;
-            break;
-         }
-      }
-
-      size_type const delete_size =
-          self._container.size() - delete_value_begin_index;
-
-      size_type current_key = self._next_destroyed;
-#pragma unroll 2
-      for (auto i = 0; i < delete_size;) {
-         auto &current_value = self._container[current_key];
-         size_type const &target_key = current_value.Next;
-
-         if (target_key >= delete_value_begin_index) {
-            current_value.Next = self._container[target_key].Next;
-            --i;
-         }
-
-         current_key = current_value.Next;
-      }
-
-#pragma unroll 2
-      for (auto i = 0; i < delete_size; ++i) {
-         self._container.pop_back();
-      }
-
-      self._free_size -= delete_size;
-   }
+   // 未検証のためコメントアウト
+   //    constexpr void shrink(this self_type &self) {
+   // #pragma unroll 2
+   //       for (auto index = iindex_type(self._container.size()); index != 0;)
+   //       {
+   //          --index;
+   //          if (self._container[index]) [[unlikely]] {
+   //             break;
+   //          }
+   //
+   //          auto &target = self._container[index];
+   //          if (index == self._next_constructed) [[unlikely]] {
+   //             self._next_constructed = target.next();
+   //          }
+   //          if (target.prev() != static_cast<iindex_type>(self_type::npos))
+   //              [[likely]] {
+   //             self._container[target.prev()].next() = target.next();
+   //          }
+   //          if (target.next() != static_cast<iindex_type>(self_type::npos))
+   //              [[likely]] {
+   //             self._container[target.next()].prev() = target.prev();
+   //          }
+   //
+   //          self._container.pop_back();
+   //          self._free_size--;
+   //       }
+   //       self._container.shrink_to_fit();
+   //    }
 
    constexpr auto begin(this self_type &self) noexcept -> iterator {
       return iterator(&self, self._next_constructed);
@@ -505,13 +529,13 @@ class basic_slot_map {
    }
 
    constexpr auto end(this self_type &self) noexcept -> iterator {
-      return iterator(&self, static_cast<size_type>(self_type::npos));
+      return iterator(&self, static_cast<iindex_type>(self_type::npos));
    }
    constexpr auto end(this self_type const &self) noexcept -> const_iterator {
-      return const_iterator(&self, static_cast<size_type>(self_type::npos));
+      return const_iterator(&self, static_cast<iindex_type>(self_type::npos));
    }
    constexpr auto cend(this self_type const &self) noexcept -> const_iterator {
-      return const_iterator(&self, static_cast<size_type>(self_type::npos));
+      return const_iterator(&self, static_cast<iindex_type>(self_type::npos));
    }
 
    auto operator=(basic_slot_map const &rhs) -> basic_slot_map & = default;

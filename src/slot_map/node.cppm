@@ -5,20 +5,20 @@ export module maboroutu.slot_map:node;
 
 namespace maboroutu {
 // [[islot_map_node]]
-template <class DependT, class T> class slot_map_node {
+template <class DependT, class T, class IIndex> class slot_map_node {
  public: /*STRUCT_FIELD*/
    using value_type = T;
-   using size_type = size_t;
+   using iindex_type = IIndex;
    struct link {
-      size_type prev;
-      size_type next;
+      iindex_type prev;
+      iindex_type next;
    };
 
  protected:
  private:
    link _link{
-       .prev = static_cast<size_type>(DependT::npos),
-       .next = static_cast<size_type>(DependT::npos),
+       .prev = static_cast<iindex_type>(DependT::npos),
+       .next = static_cast<iindex_type>(DependT::npos),
    };
    std::variant<std::monostate, value_type> _value{};
 
@@ -37,18 +37,18 @@ template <class DependT, class T> class slot_map_node {
          _value(std::in_place_type<value_type>, std::forward<ArgsT>(args)...) {}
    ~slot_map_node() = default;
 
-   constexpr auto prev(this self_type &self) noexcept -> size_type & {
+   constexpr auto prev(this self_type &self) noexcept -> iindex_type & {
       return self._link.prev;
    }
    [[nodiscard]] constexpr auto prev(this self_type const &self) noexcept
-       -> size_type const & {
+       -> iindex_type const & {
       return self._link.prev;
    }
-   constexpr auto next(this self_type &self) noexcept -> size_type & {
+   constexpr auto next(this self_type &self) noexcept -> iindex_type & {
       return self._link.next;
    }
    [[nodiscard]] constexpr auto next(this self_type const &self) noexcept
-       -> size_type const & {
+       -> iindex_type const & {
       return self._link.next;
    }
 
