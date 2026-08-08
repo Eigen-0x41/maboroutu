@@ -3,6 +3,7 @@ module;
 #include <concepts>
 #include <memory>
 #include <type_traits>
+#include <utility>
 #include <variant>
 export module maboroutu.extension_store;
 
@@ -15,13 +16,15 @@ template <class... Args> struct local_typeid {
       if constexpr (!std::is_same_v<T, Cmp>) {
          return cmp<T, LocArgs...>();
       }
-      return sizeof...(Args) - sizeof...(LocArgs);
+      return size() - sizeof...(LocArgs);
    }
    template <class T> static consteval auto cmp() -> size_t {
       static_assert(false, "is not entry type!");
    }
 
  public:
+   static consteval auto size() -> size_t { return sizeof...(Args); }
+
    template <class T> static consteval auto value() -> size_t {
       return cmp<T, Args..., void>();
    }
@@ -38,10 +41,11 @@ export template <class... Types> class extension_store {
  private:
    using self_type = extension_store;
    using id = local_typeid<Types...>;
-
    using value_type =
        std::array<std::variant<std::monostate, std::unique_ptr<Types>...>,
                   sizeof...(Types)>;
+
+   static_assert(value_type::size() == id::size(), "is match size.");
 
    value_type _data{};
 
@@ -77,6 +81,59 @@ export template <class... Types> class extension_store {
          }
       }
       return nullptr;
+   }
+
+   template <class Visitor>
+      requires(std::invocable<Visitor &, Types &> && ...)
+   auto visit_each(this self_type &self, Visitor &&vis) -> void {
+      for (auto &slot : self._data) {
+         std::visit(
+             [&vis](auto &alt) {
+                using alt_t = std::remove_cvref_t<decltype(alt)>;
+                if constexpr (!std::is_same_v<alt_t, std::monostate>) {
+                   if (alt) {
+                      vis(*alt);
+                   }
+                }
+             },
+             slot);
+      }
+   }
+
+   template <class Visitor>
+      requires(std::invocable<Visitor &, const Types &> && ...)
+   auto visit_each(this const self_type &self, Visitor &&vis) -> void {
+      for (auto const &slot : self._data) {
+         std::visit(
+             [&vis](auto const &alt) {
+                using alt_t = std::remove_cvref_t<decltype(alt)>;
+                if constexpr (!std::is_same_v<alt_t, std::monostate>) {
+                   if (alt) {
+                      vis(*alt);
+                   }
+                }
+             },
+             slot);
+      }
+   }
+
+   template <class Visitor>
+      requires(std::invocable<Visitor &, const Types &> && ...)
+   auto visit_each(this const self_type &self, Visitor &&vis) -> self_type {
+      self_type ret_value;
+      for (auto const &slot : self._data) {
+         std::visit(
+             [&ret_value, &vis](auto const &alt) {
+                using alt_t = std::remove_cvref_t<decltype(alt)>;
+                if constexpr (!std::is_same_v<alt_t, std::monostate>) {
+                   if (alt) {
+                      ret_value.template set<alt_t::element_type>(vis(*alt));
+                   }
+                }
+             },
+             slot);
+      }
+      return ret_value;
    }
 
    auto operator=(extension_store const &rhs) -> extension_store & = default;
