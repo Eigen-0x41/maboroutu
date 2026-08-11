@@ -267,7 +267,7 @@ class basic_slot_map {
       if (_container.size() != 0) {
          assert(_container.size() < std::numeric_limits<iindex_type>::max());
          _free_size = _container.size();
-#pragma unroll 8
+#pragma unroll 2
          for (auto &&[idx, node] :
               std::views::zip(std::views::iota(0), _container)) {
             node.prev() = iindex_type(idx) - 1;
