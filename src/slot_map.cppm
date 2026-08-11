@@ -31,7 +31,6 @@ namespace maboroutu {
  * @brief slot_map base
  * enumを使用することでindexに数値が混入することを防いでいます
  * 要素数がIndexTの最大値-1以上となる場合の動作は未定義です。
- * STL準拠コンテナであれば概ね使用可能。
  *
  * @details
  * 安定ハンドル（インデックス）でアクセスできる、フリーリスト方式の補助コンテナ。
@@ -43,10 +42,14 @@ namespace maboroutu {
  *                `std::unsigned_integral<std::underlying_type_t<IndexT>>`
  * を満たす enum型でなければならない（requires節参照）。
  * @tparam T 格納する値の型。
- * @tparam MakeContinerT 内部コンテナ（`node_type`
- * の配列）を選択するためのポリシー型。 `template <class U> using type = ...;`
- * の形で内部コンテナ型を 提供する（例: `make_deque` は
- * `std::deque`、`make_array<SizeV>` は `std::array<T, SizeV>` を選択する）。
+ * @tparam MakeContainerT 内部コンテナ（`node_type`
+ *            の配列）を選択するためのポリシー型。
+ *            `template <class U> using type = ...;` の形で
+ *            内部コンテナ型を提供する
+ *            （例: `make_deque` は `std::deque`、
+ *              `make_array<SizeV>` は `std::array<T, SizeV>`
+ *              を選択する）。
+ *             また、type は配列系のSTLコンテナであれば概ね使用可能。
  *
  * @warning
  * 世代（generation）カウンタを持たない実装であるため、erase()後に再利用された
@@ -57,7 +60,7 @@ namespace maboroutu {
  * とは異なる設計判断。仕様書1.5節参照）。
  */
 // [[basic_slot_map]]
-export template <class IndexT, class T, class MakeContinerT>
+export template <class IndexT, class T, class MakeContainerT>
    requires std::is_enum_v<IndexT> &&
             std::unsigned_integral<std::underlying_type_t<IndexT>>
 class basic_slot_map {
@@ -87,9 +90,9 @@ class basic_slot_map {
    //! @brief 要素の構築状態・prev/nextリンク情報を保持する内部ノード型
    //!        （モジュールパーティション `:node` で定義）。
    using node_type = slot_map_node<basic_slot_map, T, iindex_type>;
-   //! @brief `MakeContinerT` により選択される、`node_type`
+   //! @brief `MakeContainerT` により選択される、`node_type`
    //! を格納する実コンテナ型。
-   using container_type = MakeContinerT::template type<node_type>;
+   using container_type = MakeContainerT::template type<node_type>;
 
    /**
     * @brief 構築済み要素のみを走査する双方向イテレータの実装本体。
@@ -307,7 +310,7 @@ class basic_slot_map {
     * @brief `key` に対応する値への参照を、範囲・存在チェック付きで取得する。
     * @tparam Self 呼び出し時に推論される、
     *         cv修飾を含む自身の型（deducing this）。
-    *         const修飾されている場合は const_iterator を返す。
+    *         const修飾されている場合は value_type const を返す。
     * @param key 取得対象のハンドル。
     * @return 値への参照。
     * @throw std::out_of_range `contains(key)` が false
@@ -327,7 +330,7 @@ class basic_slot_map {
     * @brief `key` に対応する値への参照を、チェックなしで取得する。
     * @tparam Self 呼び出し時に推論される、
     *         cv修飾を含む自身の型（deducing this）。
-    *         const修飾されている場合は const_iterator を返す。
+    *         const修飾されている場合は value_type const を返す。
     * @param key 取得対象のハンドル。
     * @return 値への参照。
     * @pre `contains(key)` が true
@@ -511,14 +514,12 @@ class basic_slot_map {
     * @return 構築された要素のハンドル。
     * @throw std::out_of_range 新しいスロットを確保できない場合。
     * @exception `value_type` のコピーコンストラクタが例外を送出した場合、
-    *            その例外を伝播する。
+    *            その例外を伝播する。コンテナの状態は変更されない。
     * @post 成功した場合、要素は構築済みリストの先頭に追加される。
     * @post 成功した場合、`size()` が1増加する。
     * @note フリーリストに空きがある場合、そのスロットを再利用する。
     *       空きがない場合、内部コンテナが `push_back()` を提供していれば
     *       新しいスロットを追加する。
-    * @exception `value_type` のコンストラクタが例外を送出した場合、
-    *            コンテナの状態は変更されない。
     */
    auto insert(this self_type &self, value_type const &value) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
@@ -586,14 +587,12 @@ class basic_slot_map {
     * @return 構築された要素のハンドル。
     * @throw std::out_of_range 新しいスロットを確保できない場合。
     * @exception `value_type` のコンストラクタが例外を送出した場合、
-    *            その例外を伝播する。
+    *            その例外を伝播する。コンテナの状態は変更されない。
     * @post 成功した場合、要素は構築済みリストの先頭に追加される。
     * @post 成功した場合、`size()` が1増加する。
     * @note フリーリストに空きがある場合、そのスロットを再利用する。
     *       空きがない場合、内部コンテナが `emplace_back()` を提供していれば
     *       新しいスロットを追加する。
-    * @exception `value_type` のコンストラクタが例外を送出した場合、
-    *            コンテナの状態は変更されない。
     */
    template <class... ArgsT>
    auto emplace(this self_type &self, ArgsT &&...args) -> index_type {
@@ -794,10 +793,11 @@ class basic_slot_map {
  * @param index 検索対象のハンドル。
  * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
  */
-export template <class IndexT, class T, class MakeContinerT>
-auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
-            typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
-    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type * {
+export template <class IndexT, class T, class MakeContainerT>
+auto get_if(
+    basic_slot_map<IndexT, T, MakeContainerT> &slot_map,
+    typename basic_slot_map<IndexT, T, MakeContainerT>::index_type index)
+    -> basic_slot_map<IndexT, T, MakeContainerT>::value_type * {
    if (!slot_map.contains(index)) [[unlikely]] {
       return nullptr;
    }
@@ -811,23 +811,24 @@ auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
  * @param index 検索対象のハンドル。
  * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
  */
-export template <class IndexT, class T, class MakeContinerT>
-auto get_if(basic_slot_map<IndexT, T, MakeContinerT> const &slot_map,
-            typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
-    -> basic_slot_map<IndexT, T, MakeContinerT>::value_type const * {
+export template <class IndexT, class T, class MakeContainerT>
+auto get_if(
+    basic_slot_map<IndexT, T, MakeContainerT> const &slot_map,
+    typename basic_slot_map<IndexT, T, MakeContainerT>::index_type index)
+    -> basic_slot_map<IndexT, T, MakeContainerT>::value_type const * {
    if (!slot_map.contains(index)) [[unlikely]] {
       return nullptr;
    }
    return &slot_map[index];
 }
 
-//! @brief `basic_slot_map` の `MakeContinerT` 引数用ポリシー。内部コンテナに
+//! @brief `basic_slot_map` の `MakeContainerT` 引数用ポリシー。内部コンテナに
 //!        `std::deque<node_type>`（可変長）を選択する。既定の `slot_map`
 //!        エイリアスで使用。
 struct make_deque {
    template <class T> using type = typename std::deque<T>;
 };
-//! @brief `basic_slot_map` の `MakeContinerT` 引数用ポリシー。内部コンテナに
+//! @brief `basic_slot_map` の `MakeContainerT` 引数用ポリシー。内部コンテナに
 //!        `std::array<node_type,
 //!        SizeV>`（固定長）を選択する。`inplace_slot_map` エイリアスで使用。
 //! @tparam SizeV 固定長コンテナの要素数。
