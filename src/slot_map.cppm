@@ -12,6 +12,7 @@
  * `std::shared_ptr`）に することを想定する（仕様書4.6節）。
  */
 module;
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <deque>
@@ -24,18 +25,13 @@ module;
 export module maboroutu.slot_map;
 import :node;
 
-/**
- * @namespace maboroutu
- * @brief 本ライブラリ（実装名前空間）のルート名前空間。仕様書内での仮称は
- * `mylib`。
- */
 namespace maboroutu {
 
 /**
  * @brief slot_map base
  * enumを使用することでindexに数値が混入することを防いでいます
  * 要素数がIndexTの最大値-1以上となる場合の動作は未定義です。
- * stlに準処している配列型であれば大体のコンテナで使用可能です。
+ * STL準拠コンテナであれば概ね使用可能。
  *
  * @details
  * 安定ハンドル（インデックス）でアクセスできる、フリーリスト方式の補助コンテナ。
@@ -72,11 +68,11 @@ class basic_slot_map {
    //! @brief 格納する値の型。テンプレート引数 T。
    using value_type = T;
    //! @brief size()/free_size() が返すサイズ表現型。
-   using size_type = size_t;
+   using size_type = std::size_t;
 
    //! @brief
    //! 「無効なハンドル」または「フリーリスト／構築済みリストの終端」を表す番兵値。
-   static const index_type npos = static_cast<index_type>(-1);
+   static constexpr index_type npos = static_cast<index_type>(-1);
 
  protected:
  private:
@@ -103,7 +99,7 @@ class basic_slot_map {
    // [[basic_iterator]]
    class basic_iterator {
     public: /*STRUCT_FIELD*/
-      using difference_type = int;
+      using difference_type = std::ptrdiff_t;
       using value_type = typename std::pair<
           index_type const,
           typename std::conditional_t<IsConst, value_type const, value_type> &>;
@@ -145,9 +141,9 @@ class basic_slot_map {
       basic_iterator() = default;
       basic_iterator(basic_iterator const &) = default;
       basic_iterator(basic_iterator &&) = default;
-      basic_iterator(basic_iterator<false> const &cite)
+      basic_iterator(basic_iterator<false> const &ite)
          requires IsConst
-          : _data(cite._data), _idx_s(cite._idx_s) {}
+          : _data(ite._data), _idx_s(ite._idx_s) {}
       ~basic_iterator() = default;
 
       //! @brief 前置インクリメント。次に構築済みの要素（なければ
@@ -198,13 +194,22 @@ class basic_slot_map {
       //! @brief
       //! 等価比較。参照元コンテナと現在位置（インデックス）がともに一致する場合に
       //! true。
+      template <bool RConst>
       friend constexpr auto operator==(self_type const &lhs,
-                                       self_type const &rhs) -> bool {
+                                       basic_iterator<RConst> const &rhs)
+          -> bool {
          return (lhs._data == rhs._data) && (lhs._idx_s == rhs._idx_s);
       }
 
       auto operator=(basic_iterator const &rhs) -> basic_iterator & = default;
       auto operator=(basic_iterator &&rhs) -> basic_iterator & = default;
+      auto operator=(basic_iterator<false> const &ite) -> basic_iterator &
+         requires IsConst
+      {
+         _data = ite._data;
+         _idx_s = ite._idx_s;
+         return *this;
+      }
    };
 
    //! @brief ノード実体を保持する内部コンテナ本体。
@@ -266,6 +271,7 @@ class basic_slot_map {
             node.next() = iindex_type(idx) + 1;
          }
 
+         _container.front().prev() = static_cast<iindex_type>(self_type::npos);
          _container.back().next() = static_cast<iindex_type>(self_type::npos);
          _next_destroyed = 0;
       }
@@ -299,6 +305,9 @@ class basic_slot_map {
 
    /**
     * @brief `key` に対応する値への参照を、範囲・存在チェック付きで取得する。
+    * @tparam Self 呼び出し時に推論される、
+    *         cv修飾を含む自身の型（deducing this）。
+    *         const修飾されている場合は const_iterator を返す。
     * @param key 取得対象のハンドル。
     * @return 値への参照。
     * @throw std::out_of_range `contains(key)` が false
@@ -309,27 +318,25 @@ class basic_slot_map {
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
       if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("Key is not contains");
+         throw std::out_of_range("not contain the specified key");
       }
       return self._container[static_cast<iindex_type>(key)].value();
    }
 
    /**
     * @brief `key` に対応する値への参照を、チェックなしで取得する。
+    * @tparam Self 呼び出し時に推論される、
+    *         cv修飾を含む自身の型（deducing this）。
+    *         const修飾されている場合は const_iterator を返す。
     * @param key 取得対象のハンドル。
     * @return 値への参照。
     * @pre `contains(key)` が true
     * であること（呼び出し側の責任。デバッグビルドでは assert）。
     */
-   auto operator[](this self_type &self, index_type const key) noexcept
-       -> value_type & {
-      assert(self.contains(key));
-      return self._container[static_cast<iindex_type>(key)].value();
-   }
-   //! @brief operator[]() の const版。
-   //! @copydetails operator[](this self_type &self, index_type const key)
-   auto operator[](this self_type const &self, index_type const key) noexcept
-       -> value_type const & {
+   template <class Self>
+   auto operator[](this Self &self, index_type const key) noexcept
+       -> std::conditional_t<std::is_const_v<Self>, value_type const,
+                             value_type> & {
       assert(self.contains(key));
       return self._container[static_cast<iindex_type>(key)].value();
    }
@@ -351,9 +358,10 @@ class basic_slot_map {
     * フリーリストに空きがあればそこから再利用し、なければ内部コンテナを
     *          拡張する（`push_back` を持つ可変長コンテナの場合のみ）。
     * @return 予約したスロットを指すハンドル。
-    * @throw std::out_of_range 内部コンテナが `push_back()`
-    * を持たず（固定長コンテナ等）、
-    *        かつフリーリストが空でこれ以上拡張できない場合。
+    * @throw std::out_of_range 内部コンテナが
+    *           `push_back()`を持たず（固定長コンテナ等）、
+    *           かつフリーリストが空でこれ以上拡張できない場合。
+    * @throw std::out_of_range インデックス空間がIndexTの表現範囲を超えた場合。
     * @note 返されたハンドルは construct_at() で値を構築するか、cancel() で
     *       フリーリストへ戻すまで、構築済みリストには一切リンクされない。
     */
@@ -372,25 +380,30 @@ class basic_slot_map {
 
       if constexpr (requires() { self._container.push_back(node_type()); }) {
          iindex_type construct_target(self._container.size());
-         assert(construct_target != static_cast<iindex_type>(npos));
+         if (construct_target == static_cast<iindex_type>(npos)) [[unlikely]] {
+            throw std::out_of_range("slot_map index exhausted");
+         }
+         // NOTE:
+         // node_typeはデフォルトnode_type()がprev()とnext()の両方をnposにする。
          self._container.push_back(node_type());
 
          return static_cast<index_type>(construct_target);
       }
-      throw std::out_of_range("_container is not have push_back().");
+      throw std::out_of_range("Continer is not have push_back().");
    }
 
    /**
-    * @brief calncelling checkout
-    * key は checkout() が返した、かつ
-    * construct_at()をまだ呼んでいないキーであることを呼び出し側が保証すること。
-    * slot_mapが発行していないキー、既にconstruct_at()済みまたはerase()済みのキー、
-    * npos または範囲外のキーを渡した場合の動作は未定義とする。
-    *
-    * @param key [TODO:parameter]
-    * @note 上記 [TODO:parameter] 補足: key は checkout() が返した、かつ
-    *       construct_at()
-    * 未呼び出しのハンドルであること（本文中の説明文と同義）。
+    * @brief checkout() で予約した未構築スロットを予約前の状態へ戻す。
+    * @param key checkout() が返した未構築スロットのハンドル。
+    * @pre `key` は、このコンテナに対する直前の `checkout()` によって
+    *      取得されたハンドルであり、かつ `construct_at()` または
+    *      `cancel()` がまだ呼び出されていないこと。
+    * @pre `key` は `npos` ではなく、内部コンテナの範囲内であること。
+    * @warning 上記の事前条件が満たされない場合の動作は未定義。
+    * @post スロットはフリーリストへ戻され、`free_size()` が1増加する。
+    * @post 構築済み要素数 `size()` は変化しない。
+    * @note `cancel()` は `checkout()` と対になる操作であり、
+    *       checkout 済みスロットを再び `checkout()` 可能な状態へ戻す。
     */
    auto cancel(this self_type &self, index_type key) -> void {
       node_type &target = self._container[static_cast<iindex_type>(key)];
@@ -402,15 +415,19 @@ class basic_slot_map {
    }
 
    /**
-    * @brief insert value
-    *
-    * @param key checkouted key
-    * @param value construct value
-    * @return if error then, return npos. else of return [@param key].
-    * @note key が checkout() が返した、かつ construct_at() 未呼び出しの
-    *       キーであることを呼び出し側が保証すること。key が npos または
-    *       範囲外の場合の動作は未定義とする。
-    *       例外を送出した場合、要素はこの関数が呼ばれる前の状態となる。
+    * @brief checkout() で予約したスロットに値を構築する。
+    * @param key checkout() が返した未構築スロットのハンドル。
+    * @param value 構築する値。
+    * @return 構築に成功した場合は `key`、対象スロットが既に構築済みの場合は
+    *         `npos`。
+    * @pre `key` は `checkout()`によって取得された
+    *      有効な未構築スロットであること。
+    * @pre `key` は `npos` ではなく、内部コンテナの範囲内であること。
+    * @warning 上記の事前条件が満たされない場合の動作は未定義。
+    * @post 成功した場合、対象スロットは構築済みリストの先頭に追加される。
+    * @post 成功した場合、`size()` が1増加する。
+    * @exception value_type のコピーコンストラクタが例外を送出した場合、
+    *            コンテナの状態は変更されない。
     */
    auto construct_at(this self_type &self, index_type key,
                      value_type const &value) -> index_type {
@@ -442,15 +459,20 @@ class basic_slot_map {
       return key;
    }
    /**
-    * @brief insert value
-    *
-    * @param key checkouted key
-    * @param value construct value
-    * @return if error then, return npos. else of return [@param key].
-    * @note key が checkout() が返した、かつ construct_at() 未呼び出しの
-    *       キーであることを呼び出し側が保証すること。key が npos または
-    *       範囲外の場合の動作は未定義とする。
-    *       例外を送出した場合、要素はこの関数が呼ばれる前の状態となる。
+    * @brief checkout() で予約したスロットに値を in-place 構築する。
+    * @tparam ArgsT `value_type` のコンストラクタへ渡す引数の型。
+    * @param key checkout() が返した未構築スロットのハンドル。
+    * @param args `value_type` のコンストラクタへ転送する引数。
+    * @return 構築に成功した場合は `key`、対象スロットが既に構築済みの場合は
+    *         `npos`。
+    * @pre `key` は `checkout()`によって取得された
+    *      有効な未構築スロットであること。
+    * @pre `key` は `npos` ではなく、内部コンテナの範囲内であること。
+    * @warning 上記の事前条件が満たされない場合の動作は未定義。
+    * @post 成功した場合、対象スロットは構築済みリストの先頭に追加される。
+    * @post 成功した場合、`size()` が1増加する。
+    * @exception `value_type` のコンストラクタが例外を送出した場合、
+    *            コンテナの状態は変更されない。
     */
    template <class... ArgsT>
    auto construct_at(this self_type &self, index_type key, ArgsT &&...args)
@@ -484,12 +506,19 @@ class basic_slot_map {
    }
 
    /**
-    * @brief
-    * 予約（checkout）と構築（construct_at）を1ステップで行う（コピー版）。
-    * @param value 構築する値（コピーされる）。
-    * @return 構築した要素を指すハンドル。
-    * @throw std::out_of_range 内部コンテナが `push_back()` を持たず、
-    *        フリーリストも空で拡張できない場合。
+    * @brief 値をコピーして新しい要素を構築する。
+    * @param value 構築する値。
+    * @return 構築された要素のハンドル。
+    * @throw std::out_of_range 新しいスロットを確保できない場合。
+    * @exception `value_type` のコピーコンストラクタが例外を送出した場合、
+    *            その例外を伝播する。
+    * @post 成功した場合、要素は構築済みリストの先頭に追加される。
+    * @post 成功した場合、`size()` が1増加する。
+    * @note フリーリストに空きがある場合、そのスロットを再利用する。
+    *       空きがない場合、内部コンテナが `push_back()` を提供していれば
+    *       新しいスロットを追加する。
+    * @exception `value_type` のコンストラクタが例外を送出した場合、
+    *            コンテナの状態は変更されない。
     */
    auto insert(this self_type &self, value_type const &value) -> index_type {
       if (!self_type::is_npos(self._next_destroyed)) {
@@ -527,7 +556,9 @@ class basic_slot_map {
                            value));
                     }) {
          iindex_type construct_target(self._container.size());
-         assert(construct_target != static_cast<iindex_type>(npos));
+         if (construct_target == static_cast<iindex_type>(npos)) [[unlikely]] {
+            throw std::out_of_range("slot_map index exhausted");
+         }
          self._container.push_back(node_type(
              {
                  .prev = static_cast<iindex_type>(self_type::npos),
@@ -545,17 +576,24 @@ class basic_slot_map {
          ++self._size;
          return static_cast<index_type>(construct_target);
       }
-      throw std::out_of_range("_container is not have push_back().");
+      throw std::out_of_range("Continer is not have push_back().");
    }
 
    /**
-    * @brief
-    * 予約（checkout）と構築（construct_at）を1ステップで行う（in-place構築版）。
-    * @tparam ArgsT `value_type` のコンストラクタへ転送する引数の型。
+    * @brief 値を in-place 構築して新しい要素を追加する。
+    * @tparam ArgsT `value_type` のコンストラクタへ渡す引数の型。
     * @param args `value_type` のコンストラクタへ転送する引数。
-    * @return 構築した要素を指すハンドル。
-    * @throw std::out_of_range 内部コンテナが `push_back()`/`emplace_back()`
-    * を持たず、 フリーリストも空で拡張できない場合。
+    * @return 構築された要素のハンドル。
+    * @throw std::out_of_range 新しいスロットを確保できない場合。
+    * @exception `value_type` のコンストラクタが例外を送出した場合、
+    *            その例外を伝播する。
+    * @post 成功した場合、要素は構築済みリストの先頭に追加される。
+    * @post 成功した場合、`size()` が1増加する。
+    * @note フリーリストに空きがある場合、そのスロットを再利用する。
+    *       空きがない場合、内部コンテナが `emplace_back()` を提供していれば
+    *       新しいスロットを追加する。
+    * @exception `value_type` のコンストラクタが例外を送出した場合、
+    *            コンテナの状態は変更されない。
     */
    template <class... ArgsT>
    auto emplace(this self_type &self, ArgsT &&...args) -> index_type {
@@ -594,7 +632,9 @@ class basic_slot_map {
                            std::forward<ArgsT>(args)...);
                     }) {
          iindex_type construct_target(self._container.size());
-         assert(construct_target != static_cast<iindex_type>(npos));
+         if (construct_target == static_cast<iindex_type>(npos)) [[unlikely]] {
+            throw std::out_of_range("slot_map index exhausted");
+         }
          self._container.emplace_back(
              typename node_type::link{
                  .prev = static_cast<iindex_type>(self_type::npos),
@@ -612,26 +652,23 @@ class basic_slot_map {
          ++self._size;
          return static_cast<index_type>(construct_target);
       }
-      throw std::out_of_range("_container is not have emplace_back().");
+      throw std::out_of_range("Continer is not have emplace_back().");
    }
 
    /**
     * @brief `key` が指す要素を破棄し、対応するスロットをフリーリストへ戻す。
     * @param key 破棄対象のハンドル。
-    * @return 破棄した要素の（構築済みリスト上の）1つ前の要素を指すハンドル
-    *         （先頭要素だった場合は npos）。
     * @throw std::out_of_range `contains(key)` が false の場合。
     * @note 破棄後、同一スロットは checkout()/insert()/emplace()
     * により再利用され得る。
-    * 例外が送出されば場合、要素は削除されない。
+    * 例外が送出された場合、要素は削除されない。
     */
-   auto erase(this self_type &self, index_type const key) -> index_type {
+   void erase(this self_type &self, index_type const key) {
       if (!self.contains(key)) [[unlikely]] {
          throw std::out_of_range("Key is not contains.");
       }
 
       node_type &target = self._container[static_cast<iindex_type>(key)];
-      auto prev_idx = target.prev();
 
       target.destroy();
       ++self._free_size;
@@ -663,8 +700,6 @@ class basic_slot_map {
       //       assert()にて、初期化されていることを確認するために使用しています。
       target.prev() = static_cast<iindex_type>(self_type::npos);
 #endif /*!defined(NDEBUG) */
-
-      return static_cast<index_type>(prev_idx);
    }
 
    // 未検証のためコメントアウト
@@ -702,7 +737,13 @@ class basic_slot_map {
    //       self._container.shrink_to_fit();
    //    }
 
-   //! @brief 構築済み要素の先頭を指すイテレータを返す。
+   /**
+    * @brief 構築済み要素の先頭を指すイテレータを返す。
+    * @tparam Self 呼び出し時に推論される、
+    *         cv修飾を含む自身の型（deducing this）。
+    *         const修飾されている場合は const_iterator を返す。
+    * @return const版なら const_iterator、非const版なら iterator。
+    */
    template <class Self>
    constexpr auto begin(this Self &self) noexcept
        -> std::conditional_t<std::is_const_v<Self>, const_iterator, iterator> {
@@ -718,7 +759,13 @@ class basic_slot_map {
       return const_iterator(&self, self._next_constructed);
    }
 
-   //! @brief 構築済み要素の終端（番兵、npos）を指すイテレータを返す。
+   /**
+    * @brief 構築済み要素の終端（番兵、npos）を指すイテレータを返す。
+    * @tparam Self 呼び出し時に推論される、
+    *         cv修飾を含む自身の型（deducing this）。
+    *         const修飾されている場合は const_iterator を返す。
+    * @return const版なら const_iterator、非const版なら iterator。
+    */
    template <class Self>
    constexpr auto end(this Self &self) noexcept
        -> std::conditional_t<std::is_const_v<Self>, const_iterator, iterator> {
@@ -743,8 +790,6 @@ class basic_slot_map {
 /**
  * @brief `index`
  * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if` 準拠）。
- * @details `std::variant::get_if` の前例に倣い自由関数として提供する
- *          （`extension_store::get_if` はメンバ関数。仕様書1.5節参照）。
  * @param slot_map 検索対象の basic_slot_map。
  * @param index 検索対象のハンドル。
  * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
@@ -758,9 +803,14 @@ auto get_if(basic_slot_map<IndexT, T, MakeContinerT> &slot_map,
    }
    return &slot_map[index];
 }
-//! @brief get_if() の const版。
-//! @copydetails get_if(basic_slot_map<IndexT,T,MakeContinerT>&,typename
-//! basic_slot_map<IndexT,T,MakeContinerT>::index_type)
+
+/**
+ * @brief `index`
+ * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if` 準拠）。
+ * @param slot_map 検索対象の basic_slot_map。
+ * @param index 検索対象のハンドル。
+ * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
+ */
 export template <class IndexT, class T, class MakeContinerT>
 auto get_if(basic_slot_map<IndexT, T, MakeContinerT> const &slot_map,
             typename basic_slot_map<IndexT, T, MakeContinerT>::index_type index)
