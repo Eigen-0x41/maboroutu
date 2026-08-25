@@ -20,6 +20,12 @@
 !/test/
 !/test/*
 
+
+!/core/
+!/core/*
+!/extension/
+!/extension/*
+
 !/.clang-format
 !/.clang-tidy
 !/CMakeLists.txt

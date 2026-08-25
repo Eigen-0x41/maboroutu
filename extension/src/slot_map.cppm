@@ -73,6 +73,8 @@ class basic_slot_map {
    //! @brief size()/free_size() が返すサイズ表現型。
    using size_type = std::size_t;
 
+   using container_maker = MakeContainerT;
+
    //! @brief
    //! 「無効なハンドル」または「フリーリスト／構築済みリストの終端」を表す番兵値。
    static constexpr index_type npos = static_cast<index_type>(-1);

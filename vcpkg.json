@@ -13,13 +13,5 @@
       "name": "vcpkg-cmake-config",
       "host": true
     }
-  ],
-  "features": {
-    "maboroutu-testing": {
-      "description": "Dependencies needed for the tests.",
-      "dependencies": [
-        "gtest"
-      ]
-    }
-  }
+  ]
 }
