@@ -11,8 +11,8 @@
 #--cxx
 !/include/
 !/include/*
-!/include_disable/
-!/include_disable/*
+# !/include_disable/
+# !/include_disable/*
 !/lib/
 !/lib/*
 !/src/
