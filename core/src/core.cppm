@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <concepts>
 #include <cstddef>
 #include <memory>
@@ -48,5 +49,25 @@ static_assert(not contains_duplicate<char, short, int>, "not duplicate");
 static_assert(contains_duplicate<char, short, int, short>, "duplicate");
 static_assert(contains_duplicate<int, short, int, short>, "duplicate");
 static_assert(not contains_duplicate<char, short, int, int &>, "not duplicate");
+
+export template <class EnumT, EnumT EnumV>
+   requires std::is_enum_v<EnumT>
+struct in_place_tag {
+   using value_type = EnumT;
+   static constexpr value_type value = EnumV;
+
+   in_place_tag() = default;
+   in_place_tag(in_place_tag const &) = default;
+   in_place_tag(in_place_tag &&) = default;
+
+   auto operator=(const in_place_tag &) -> in_place_tag & = delete;
+   auto operator=(in_place_tag &&) -> in_place_tag & = delete;
+};
+
+export template <auto EnumV>
+constexpr auto in_place_tag_v = in_place_tag<decltype(EnumV), EnumV>();
+
+export template <std::endian EndianV>
+using endian_in_place_tag = in_place_tag<std::endian, EndianV>;
 
 } // namespace maboroutu

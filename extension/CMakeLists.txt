@@ -17,12 +17,12 @@ endif()
 
 set(PROJECT_COMPONENT extension)
 if(WORKSPACE_NAME)
-    set(_PROJECT_NAME "${WORKSPACE_NAME}_${PROJECT_COMPONENT}")
+  set(_PROJECT_NAME "${WORKSPACE_NAME}_${PROJECT_COMPONENT}")
 else()
-    set(_PROJECT_NAME "${PROJECT_COMPONENT}")
+  set(_PROJECT_NAME "${PROJECT_COMPONENT}")
 endif()
 project(${_PROJECT_NAME}
-    VERSION 0.0.0.0
+    VERSION 0.0.3.0
     # COMPAT_VERSION 0.0.0.0
     # SPDX_LICENSE  MIT
     DESCRIPTION "TODO: ADD DESCRIPTION"
@@ -46,7 +46,7 @@ else()
 endif()
 add_library(${WORKSPACE_NAME}::${PROJECT_COMPONENT} ALIAS ${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_26)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_26)
 
 file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
   "${PROJECT_SOURCE_DIR}/src/*.cppm")
@@ -99,13 +99,13 @@ install(EXPORT ${PROJECT_NAME}-targets
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
-    VERSION ${CMAKE_PROJECT_VERSION}
+    VERSION ${PROJECT_VERSION}
     COMPATIBILITY AnyNewerVersion)
 file(WRITE
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cmake.in
   "@PACKAGE_INIT@\n"
   "include(CMakeFindDependencyMacro)\n"
-  # "find_dependency(${lib} CONFIG REQUIRED)\n"
+  "find_dependency(${WORKSPACE_NAME}_core CONFIG REQUIRED)\n"
   "include(\"\${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake\")\n"
   "check_required_components(\"@PROJECT_NAME@\")")
 configure_package_config_file(
@@ -113,4 +113,5 @@ configure_package_config_file(
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME})

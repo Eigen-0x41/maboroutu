@@ -6,7 +6,7 @@ module;
 #include <span>
 export module maboroutu.data_source;
 export import maboroutu.core;
-export import maboroutu.error;
+import maboroutu.error;
 
 namespace maboroutu {
 
