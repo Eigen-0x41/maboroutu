@@ -16,6 +16,8 @@ export import maboroutu.data_source;
 
 namespace maboroutu {
 
+export using endian = std::endian;
+
 export template <class T>
 concept numberable =
     std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>;
@@ -72,24 +74,24 @@ constexpr auto wrap_byteswap(T value) noexcept -> T {
 
 } // namespace binary_convert_detail
 
-export template <std::endian Endian, numberable T>
+export template <endian Endian, numberable T>
 [[nodiscard]] constexpr auto
 from_bytes(std::array<std::byte, sizeof(T)> const &bytes) noexcept -> T {
    T value = std::bit_cast<T>(bytes);
-   if constexpr (sizeof(T) != 1 && Endian != std::endian::native) {
-      static_assert(std::endian::native == std::endian::big ||
-                        std::endian::native == std::endian::little,
+   if constexpr (sizeof(T) != 1 && Endian != endian::native) {
+      static_assert(endian::native == endian::big ||
+                        endian::native == endian::little,
                     "not supported endian.");
       value = binary_convert_detail::wrap_byteswap(value);
    }
    return value;
 }
-export template <std::endian Endian, numberable T>
+export template <endian Endian, numberable T>
 [[nodiscard]] constexpr auto to_bytes(T value) noexcept
     -> std::array<std::byte, sizeof(T)> {
-   if constexpr (sizeof(T) != 1 && Endian != std::endian::native) {
-      static_assert(std::endian::native == std::endian::big ||
-                        std::endian::native == std::endian::little,
+   if constexpr (sizeof(T) != 1 && Endian != endian::native) {
+      static_assert(endian::native == endian::big ||
+                        endian::native == endian::little,
                     "not supported endian.");
       value = binary_convert_detail::wrap_byteswap(value);
    }
@@ -97,7 +99,7 @@ export template <std::endian Endian, numberable T>
 }
 
 // data_source からの単一値読み込み。
-export template <std::endian Endian, numberable T, data_source Src>
+export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_value(Src &src, std::size_t offset)
     -> data_source_result<T> {
    auto bytes = src.read(region{
@@ -115,7 +117,7 @@ export template <std::endian Endian, numberable T, data_source Src>
 }
 
 // data_source への単一値書き込み。
-export template <std::endian Endian, numberable T, writable_data_source Src>
+export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_value(Src &dst, std::size_t offset, T value)
     -> data_source_result<void> {
    auto const bytes = to_bytes<Endian, T>(value);
@@ -128,8 +130,7 @@ export template <std::endian Endian, numberable T, writable_data_source Src>
 }
 
 // data_source からの固定長配列読み込み。
-export template <std::endian Endian, numberable T, std::size_t Size,
-                 data_source Src>
+export template <endian Endian, numberable T, std::size_t Size, data_source Src>
 [[nodiscard]] auto read_array(Src &src, std::size_t offset)
     -> data_source_result<std::array<T, Size>> {
    auto bytes = src.read(region{
@@ -151,7 +152,7 @@ export template <std::endian Endian, numberable T, std::size_t Size,
 }
 
 // data_source への固定長配列書き込み。
-export template <std::endian Endian, numberable T, std::size_t Size,
+export template <endian Endian, numberable T, std::size_t Size,
                  writable_data_source Src>
 [[nodiscard]] auto write_array(Src &dst, std::size_t offset,
                                std::array<T, Size> const &values)
@@ -170,7 +171,7 @@ export template <std::endian Endian, numberable T, std::size_t Size,
 }
 
 // data_source からの可変長読み込み。
-export template <std::endian Endian, numberable T, data_source Src>
+export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t offset, std::size_t count)
     -> data_source_result<std::vector<T>> {
    auto bytes = src.read(region{
@@ -193,7 +194,7 @@ export template <std::endian Endian, numberable T, data_source Src>
 }
 
 // data_source への可変長書き込み。
-export template <std::endian Endian, numberable T, writable_data_source Src>
+export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_vector(Src &dst, std::size_t offset,
                                 std::vector<T> const &values)
     -> data_source_result<void> {
