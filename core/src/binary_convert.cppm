@@ -93,6 +93,8 @@ constexpr auto wrap_byteswap(T value) noexcept -> T {
                     "T is not compatible wrap_byteswap.");
       return std::bit_cast<T>(std::byteswap(std::bit_cast<u128_t>(value)));
    }
+}
+
 } // namespace binary_convert_detail
 
 export template <endian Endian, numberable T>
