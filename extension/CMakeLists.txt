@@ -17,9 +17,9 @@ endif()
 
 set(PROJECT_COMPONENT extension)
 if(WORKSPACE_NAME)
-  set(_PROJECT_NAME "${WORKSPACE_NAME}_${PROJECT_COMPONENT}")
+    set(_PROJECT_NAME "${WORKSPACE_NAME}_${PROJECT_COMPONENT}")
 else()
-  set(_PROJECT_NAME "${PROJECT_COMPONENT}")
+    set(_PROJECT_NAME "${PROJECT_COMPONENT}")
 endif()
 project(${_PROJECT_NAME}
     VERSION 0.0.3.0
@@ -64,7 +64,7 @@ target_sources(${PROJECT_NAME}
 
 ### Dependencies
 # find_package(${LIB} CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${WORKSPACE_NAME}::core)
+# target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB})
 
 ### Transparency
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)

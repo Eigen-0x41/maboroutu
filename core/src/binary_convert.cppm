@@ -24,54 +24,75 @@ concept numberable =
 
 namespace binary_convert_detail {
 
-// NOTE: sizeof(uint8_t) == sizeof(char) となることを期待する。
+// NOTE:
+// 各uintXX_t系が定義されていない場合はuint_least8_tをスタブとして定義する。
+#if defined(UINT8_MAX)
+using u8_t = std::uint8_t;
+inline constexpr bool has_u8 = true;
+#else
+using u8_t = std::uint_least8_t;
+inline constexpr bool has_u8 = false;
+#endif
+
+#if defined(UINT16_MAX)
+using u16_t = std::uint16_t;
+inline constexpr bool has_u16 = true;
+#else
+using u16_t = std::uint_least8_t;
+inline constexpr bool has_u16 = false;
+#endif
+
+#if defined(UINT32_MAX)
+using u32_t = std::uint32_t;
+inline constexpr bool has_u32 = true;
+#else
+using u32_t = std::uint_least8_t;
+inline constexpr bool has_u32 = false;
+#endif
+
+#if defined(UINT64_MAX)
+using u64_t = std::uint64_t;
+inline constexpr bool has_u64 = true;
+#else
+using u64_t = std::uint_least8_t;
+inline constexpr bool has_u64 = false;
+#endif
+
+// NOTE: std::uint128_t はC++23/26の規格に存在せず、UINT128_MAXも
+// 標準では定義されない。将来の規格拡張に備えた分岐であり、現行の主要
+// コンパイラでは常に has_u128 == false となる
+#if defined(UINT128_MAX)
+using u128_t = std::uint128_t;
+inline constexpr bool has_u128 = true;
+#else
+using u128_t = std::uint8_t;
+inline constexpr bool has_u128 = false;
+#endif
+
 template <class T>
 concept byteswappable_size =
-    numberable<T> && (sizeof(T) == sizeof(std::uint8_t)
-#if defined(UINT16_MAX)
-                      || sizeof(T) == sizeof(std::uint16_t)
-#endif
-#if defined(UINT32_MAX)
-                      || sizeof(T) == sizeof(std::uint32_t)
-#endif
-#if defined(UINT64_MAX)
-                      || sizeof(T) == sizeof(std::uint64_t)
-#endif
-                     );
+    numberable<T> && ((has_u8 && (sizeof(T) == sizeof(u8_t))) ||
+                      (has_u16 && (sizeof(T) == sizeof(u16_t))) ||
+                      (has_u32 && (sizeof(T) == sizeof(u32_t))) ||
+                      (has_u64 && (sizeof(T) == sizeof(u64_t))) ||
+                      (has_u128 && (sizeof(T) == sizeof(u128_t))));
 
 // std::byteswapをstd::bit_castを挟むことでbit値が同じ型なら変換可能にする。
 template <byteswappable_size T>
 constexpr auto wrap_byteswap(T value) noexcept -> T {
-   if constexpr (sizeof(T) == sizeof(std::uint8_t)) {
-      return std::bit_cast<T>(
-          std::byteswap(std::bit_cast<std::uint8_t>(value)));
+   if constexpr (has_u8 && (sizeof(T) == sizeof(u8_t))) {
+      return value;
+   } else if constexpr (has_u16 && (sizeof(T) == sizeof(u16_t))) {
+      return std::bit_cast<T>(std::byteswap(std::bit_cast<u16_t>(value)));
+   } else if constexpr (has_u32 && (sizeof(T) == sizeof(u32_t))) {
+      return std::bit_cast<T>(std::byteswap(std::bit_cast<u32_t>(value)));
+   } else if constexpr (has_u64 && (sizeof(T) == sizeof(u64_t))) {
+      return std::bit_cast<T>(std::byteswap(std::bit_cast<u64_t>(value)));
+   } else {
+      static_assert(has_u128 && (sizeof(T) == sizeof(u128_t)),
+                    "T is not compatible wrap_byteswap.");
+      return std::bit_cast<T>(std::byteswap(std::bit_cast<u128_t>(value)));
    }
-#if defined(UINT16_MAX)
-   if constexpr (sizeof(T) == sizeof(std::uint16_t)) {
-      return std::bit_cast<T>(
-          std::byteswap(std::bit_cast<std::uint16_t>(value)));
-   }
-#endif
-#if defined(UINT32_MAX)
-   if constexpr (sizeof(T) == sizeof(std::uint32_t)) {
-      return std::bit_cast<T>(
-          std::byteswap(std::bit_cast<std::uint32_t>(value)));
-   }
-#endif
-#if defined(UINT64_MAX)
-   if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
-      return std::bit_cast<T>(
-          std::byteswap(std::bit_cast<std::uint64_t>(value)));
-   }
-#endif
-#if defined(UINT128_MAX)
-   if constexpr (sizeof(T) == sizeof(std::uint128_t)) {
-      return std::bit_cast<T>(
-          std::byteswap(std::bit_cast<std::uint128_t>(value)));
-   }
-#endif
-}
-
 } // namespace binary_convert_detail
 
 export template <endian Endian, numberable T>
