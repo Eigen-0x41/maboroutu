@@ -10,7 +10,7 @@ export import maboroutu.error;
 
 namespace maboroutu {
 
-export namespace errc {
+namespace errc {
 enum class data_source {
    out_of_range,
    invalid_member_variable,
