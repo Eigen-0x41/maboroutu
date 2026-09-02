@@ -2,6 +2,7 @@ module;
 
 #if (__STDC_HOSTED__ != 0) ||                                                  \
     defined(MABOROUTU_STREAM_DATA_SOURCE_ALLOW_FREESTANDING)
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <expected>
@@ -9,6 +10,7 @@ module;
 #include <iosfwd>
 #include <iostream>
 #include <istream>
+#include <limits>
 #include <memory>
 #include <span>
 #include <type_traits>
@@ -44,13 +46,15 @@ namespace maboroutu {
 export template <std::derived_from<std::istream> Stream>
 class stream_data_source {
  public: /*STRUCT_FIELD*/
+   using value_type = Stream;
    template <class T> using result_type = data_source_result<T>;
 
  protected:
-   Stream data;
+   value_type data;
 
  private:
    using self_type = stream_data_source;
+   using errc_type = result_type<void>::error_type::code_type;
 
    /*--:  *IMPLIMENT_FIELD*/
  protected:
@@ -69,9 +73,11 @@ class stream_data_source {
    template <class Self>
    [[nodiscard]] auto seekg(this Self &self, std::size_t pos)
        -> result_type<void> {
+      // NOTE: pos_typeはclassで定義されているため
+      //       assertは諦める。
       self.data.seekg(pos);
       if (self.data.fail()) [[unlikely]] {
-         return make_unexpected(errc::data_source::operation_failure);
+         return make_unexpected(errc_type::operation_failure);
       }
       return {};
    }
@@ -98,9 +104,10 @@ class stream_data_source {
    template <class Self>
    [[nodiscard]] auto seekg(this Self &self, std::size_t pos,
                             std::ios_base::seekdir dir) -> result_type<void> {
+      assert(pos <= std::numeric_limits<typename value_type::off_type>::max());
       self.data.seekg(pos, dir);
       if (self.data.fail()) [[unlikely]] {
-         return make_unexpected(errc::data_source::operation_failure);
+         return make_unexpected(errc_type::operation_failure);
       }
       return {};
    }
@@ -112,53 +119,70 @@ class stream_data_source {
    template <class... Args>
       requires(!std::same_as<std::remove_cvref_t<Args>, stream_data_source> ||
                ...)
-   stream_data_source(Args &&...args) : data(std::forward<Args>(args)...) {}
+   explicit stream_data_source(Args &&...args)
+       : data(std::forward<Args>(args)...) {}
    ~stream_data_source() = default;
 
    template <class Self>
    [[nodiscard]] auto read(this Self &self, region reg)
        -> result_type<byte_array> {
-      if (self.data) [[likely]] {
-         if (auto result = self.seekg(reg.offset); !result) {
-            return std::unexpected{result.error()};
+      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
+      if (!self.data) [[unlikely]] {
+         if (self.data.bad()) [[unlikely]] {
+            return make_unexpected(errc_type::invalid_member_variable);
          }
-         byte_array ret_value{
-             .value =
-                 std::make_unique<decltype(ret_value)::value_type[]>(reg.size),
-             .size = reg.size,
-         };
-         self.data.read(reinterpret_cast<char *>(ret_value.value.get()),
-                        sizeof(decltype(ret_value)::value_type) *
-                            ret_value.size);
-         if (static_cast<std::size_t>(self.data.gcount()) != reg.size)
-             [[unlikely]] {
-            return make_unexpected(errc::data_source::out_of_range);
-         }
-         if (self.data.fail()) [[unlikely]] {
-            return make_unexpected(errc::data_source::operation_failure);
-         }
-         return ret_value;
+         self.data.clear();
       }
-      return make_unexpected(errc::data_source::invalid_member_variable);
+      if (auto result = self.seekg(reg.offset); !result) {
+         return std::unexpected{result.error()};
+      }
+      byte_array ret_value{
+          .value = std::make_unique<decltype(ret_value)::value_type>(reg.size),
+          .size = reg.size,
+      };
+      self.data.read(reinterpret_cast<char *>(ret_value.value.get()),
+                     ret_value.size);
+      // NOTE: 指定サイズを読み込む前にEOFに達した場合はfailとなる。
+      if (self.data.fail()) [[unlikely]] {
+         // NOTE: 仕様によるとbadbitになることは無いらしい。
+         //       ただし、fail()がbadbitも検出するためその回避。
+         if (self.data.bad()) [[unlikely]] {
+            return make_unexpected(errc_type::invalid_member_variable);
+         }
+         return make_unexpected(
+             (static_cast<std::size_t>(self.data.gcount()) != reg.size)
+                 ? errc_type::out_of_range
+                 : errc_type::operation_failure);
+      }
+      return ret_value;
    }
 
+   /**
+    * @brief streamのサイズを取得する。
+    * 格納されているバイナリ値を変更しないことのみ保証する。
+    *
+    * この関数の場合、
+    * サイズを取得した際後のポジションは先頭となる。
+    *
+    * @tparam Self [TODO:tparam]
+    * @return [TODO:return]
+    */
    template <class Self>
    [[nodiscard]] auto size(this Self &self) -> result_type<std::size_t> {
-      if (self.data) [[likely]] {
-         if (auto result = self.seekg(0, std::ios_base::end); !result) {
-            return std::unexpected{result.error()};
+      if (!self.data) [[unlikely]] {
+         if (self.data.bad()) [[unlikely]] {
+            return make_unexpected(errc_type::invalid_member_variable);
          }
-         auto const endpos = self.data.tellg();
-         if (auto result = self.seekg(0); !result) {
-            return std::unexpected{result.error()};
-         }
-         return endpos - self.data.tellg();
+         self.data.clear();
       }
-      return make_unexpected(errc::data_source::invalid_member_variable);
-   }
-
-   template <class Self> auto clear_status(this Self &self) -> void {
-      self.data.clear();
+      if (auto result = self.seekg(0, std::ios_base::end); !result) {
+         return std::unexpected{result.error()};
+      }
+      auto const endpos = self.data.tellg();
+      if (auto result = self.seekg(0); !result) {
+         return std::unexpected{result.error()};
+      }
+      return endpos - self.data.tellg();
    }
 
    auto operator=(stream_data_source const &rhs)
@@ -170,23 +194,27 @@ class stream_data_source {
 export template <std::derived_from<std::iostream> Stream>
 class stream_writable_data_source : public stream_data_source<Stream> {
  public: /*STRUCT_FIELD*/
+   using value_type = Stream;
    template <class T>
    using result_type = stream_data_source<Stream>::template result_type<T>;
 
  protected:
+   // value_type data;
+
  private:
    using self_type = stream_writable_data_source;
-
-   // Stream _data;
+   using errc_type = result_type<void>::error_type::code_type;
 
    /*--:  *IMPLIMENT_FIELD*/
  protected:
    template <class Self>
    [[nodiscard]] auto seekp(this Self &self, std::size_t pos)
        -> result_type<void> {
+      // NOTE: pos_typeはclassで定義されているため
+      //       assertは諦める。
       self.data.seekp(pos);
       if (self.data.fail()) [[unlikely]] {
-         return make_unexpected(errc::data_source::operation_failure);
+         return make_unexpected(errc_type::operation_failure);
       }
       return {};
    }
@@ -199,28 +227,35 @@ class stream_writable_data_source : public stream_data_source<Stream> {
       requires(!std::same_as<std::remove_cvref_t<Args>,
                              stream_writable_data_source> ||
                ...)
-   stream_writable_data_source(Args &&...args)
-       : stream_data_source<Stream>(std::forward<Args>(args)...) {}
+   explicit stream_writable_data_source(Args &&...args)
+       : stream_data_source<value_type>(std::forward<Args>(args)...) {}
    ~stream_writable_data_source() = default;
 
    template <class Self>
    [[nodiscard]] auto write(this Self &self, region reg,
                             std::span<std::byte const> data)
        -> result_type<void> {
-      if (self.data) [[likely]] {
-         if (auto result = self.seekp(reg.offset); !result) {
-            return std::unexpected{result.error()};
-         }
-         self.data.write(reinterpret_cast<char const *>(data.data()), reg.size);
+      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
+      if (!self.data) [[unlikely]] {
          if (self.data.bad()) [[unlikely]] {
-            return make_unexpected(errc::data_source::invalid_member_variable);
+            return make_unexpected(errc_type::invalid_member_variable);
          }
-         if (self.data.fail()) [[unlikely]] {
-            return make_unexpected(errc::data_source::operation_failure);
-         }
-         return {};
+         self.data.clear();
       }
-      return make_unexpected(errc::data_source::invalid_member_variable);
+      if (data.size() < reg.size) [[unlikely]] {
+         return make_unexpected(errc_type::out_of_range);
+      }
+      if (auto result = self.seekp(reg.offset); !result) {
+         return std::unexpected{result.error()};
+      }
+      self.data.write(reinterpret_cast<char const *>(data.data()), reg.size);
+      if (self.data.bad()) [[unlikely]] {
+         return make_unexpected(errc_type::invalid_member_variable);
+      }
+      if (self.data.fail()) [[unlikely]] {
+         return make_unexpected(errc_type::operation_failure);
+      }
+      return {};
    }
 
    auto operator=(stream_writable_data_source const &rhs)
