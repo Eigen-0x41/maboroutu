@@ -64,7 +64,7 @@ target_sources(${PROJECT_NAME}
 
 ### Dependencies
 # find_package(${LIB} CONFIG REQUIRED)
-# target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${WORKSPACE_NAME}::core)
 
 ### Transparency
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}_PUBLIC)
