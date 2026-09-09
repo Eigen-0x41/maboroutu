@@ -2,6 +2,7 @@ module;
 #include <array>
 #include <bit>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -12,7 +13,9 @@ module;
 export module maboroutu.binary_convert;
 export import maboroutu.core;
 export import maboroutu.error;
+
 export import maboroutu.data_source;
+export import maboroutu.sequential_source;
 
 namespace maboroutu {
 
@@ -121,10 +124,10 @@ export template <endian Endian, numberable T>
    return std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
 }
 
-// data_source からの単一値読み込み。
+// 単一値読み込み。
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_value(Src &src, std::size_t offset)
-    -> data_source_result<T> {
+    -> Src::template result_type<T> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T),
@@ -138,11 +141,35 @@ export template <endian Endian, numberable T, data_source Src>
    std::memcpy(buf.data(), bytes->value.get(), sizeof(T));
    return from_bytes<Endian, T>(buf);
 }
+static_assert(
+    requires(null_data_source src, std::size_t size) {
+       {
+          read_value<std::endian::little, int>(src, size)
+       } -> std::same_as<null_data_source::result_type<int>>;
+    }, "");
+export template <endian Endian, numberable T, sequential_source Src>
+[[nodiscard]] auto read_value(Src &src) -> Src::template result_type<T> {
+   auto bytes = src.read(sizeof(T));
+   if (!bytes) {
+      return std::unexpected(bytes.error());
+   }
+   assert(bytes->size == sizeof(T) &&
+          "data_source::read() violated its no-short-read contract.");
+   std::array<std::byte, sizeof(T)> buf{};
+   std::memcpy(buf.data(), bytes->value.get(), sizeof(T));
+   return from_bytes<Endian, T>(buf);
+}
+static_assert(
+    requires(null_sequential_source src, std::size_t size) {
+       {
+          read_value<std::endian::little, int>(src)
+       } -> std::same_as<null_sequential_source::result_type<int>>;
+    }, "");
 
-// data_source への単一値書き込み。
+// 単一値書き込み。
 export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_value(Src &dst, std::size_t offset, T value)
-    -> data_source_result<void> {
+    -> Src::template result_type<void> {
    auto const bytes = to_bytes<Endian, T>(value);
    return dst.write(
        region{
@@ -151,11 +178,30 @@ export template <endian Endian, numberable T, writable_data_source Src>
        },
        std::span<std::byte const>(bytes.data(), bytes.size()));
 }
+static_assert(
+    requires(null_writable_data_source src, std::size_t offset, int value) {
+       {
+          write_value<std::endian::little, int>(src, offset, value)
+       } -> std::same_as<null_data_source::result_type<void>>;
+    }, "");
 
-// data_source からの固定長配列読み込み。
+export template <endian Endian, numberable T, writable_sequential_source Src>
+[[nodiscard]] auto write_value(Src &dst, T value)
+    -> Src::template result_type<void> {
+   auto const bytes = to_bytes<Endian, T>(value);
+   return dst.write(std::span<std::byte const>(bytes.data(), bytes.size()));
+}
+static_assert(
+    requires(null_writable_sequential_source src, int value) {
+       {
+          write_value<std::endian::little>(src, value)
+       } -> std::same_as<null_sequential_source::result_type<void>>;
+    }, "");
+
+// 固定長配列読み込み。
 export template <endian Endian, numberable T, std::size_t Size, data_source Src>
 [[nodiscard]] auto read_array(Src &src, std::size_t offset)
-    -> data_source_result<std::array<T, Size>> {
+    -> Src::template result_type<std::array<T, Size>> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * Size,
@@ -173,13 +219,44 @@ export template <endian Endian, numberable T, std::size_t Size, data_source Src>
    }
    return ret_value;
 }
+static_assert(
+    requires(null_data_source src, std::size_t offset) {
+       {
+          read_array<std::endian::little, int, 2>(src, offset)
+       } -> std::same_as<null_data_source::result_type<std::array<int, 2>>>;
+    }, "");
+export template <endian Endian, numberable T, std::size_t Size,
+                 sequential_source Src>
+[[nodiscard]] auto read_array(Src &src)
+    -> Src::template result_type<std::array<T, Size>> {
+   auto bytes = src.read(sizeof(T) * Size);
+   if (!bytes) {
+      return std::unexpected(bytes.error());
+   }
+   assert(bytes->size == sizeof(T) * Size &&
+          "data_source::read() violated its no-short-read contract.");
+   std::array<T, Size> ret_value{};
+   for (std::size_t i = 0; i < Size; ++i) {
+      std::array<std::byte, sizeof(T)> buf{};
+      std::memcpy(buf.data(), bytes->value.get() + (i * sizeof(T)), sizeof(T));
+      ret_value[i] = from_bytes<Endian, T>(buf);
+   }
+   return ret_value;
+}
+static_assert(
+    requires(null_sequential_source src) {
+       {
+          read_array<std::endian::little, int, 2>(src)
+       }
+       -> std::same_as<null_sequential_source::result_type<std::array<int, 2>>>;
+    }, "");
 
-// data_source への固定長配列書き込み。
+// 固定長配列書き込み。
 export template <endian Endian, numberable T, std::size_t Size,
                  writable_data_source Src>
 [[nodiscard]] auto write_array(Src &dst, std::size_t offset,
                                std::array<T, Size> const &values)
-    -> data_source_result<void> {
+    -> Src::template result_type<void> {
    std::array<std::byte, sizeof(T) * Size> buf{};
    for (std::size_t i = 0; i < Size; ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -192,11 +269,36 @@ export template <endian Endian, numberable T, std::size_t Size,
        },
        std::span<std::byte const>(buf.data(), buf.size()));
 }
+static_assert(
+    requires(null_writable_data_source src, std::size_t offset,
+             std::array<int, 2> value) {
+       {
+          write_array<std::endian::little, int, 2>(src, offset, value)
+       } -> std::same_as<null_writable_data_source::result_type<void>>;
+    },
+    "");
+export template <endian Endian, numberable T, std::size_t Size,
+                 writable_sequential_source Src>
+[[nodiscard]] auto write_array(Src &dst, std::array<T, Size> const &values)
+    -> Src::template result_type<void> {
+   std::array<std::byte, sizeof(T) * Size> buf{};
+   for (std::size_t i = 0; i < Size; ++i) {
+      auto const encoded = to_bytes<Endian, T>(values[i]);
+      std::memcpy(buf.data() + (i * sizeof(T)), encoded.data(), sizeof(T));
+   }
+   return dst.write(std::span<std::byte const>(buf.data(), buf.size()));
+}
+static_assert(
+    requires(null_writable_sequential_source src, std::array<int, 2> value) {
+       {
+          write_array<std::endian::little, int, 2>(src, value)
+       } -> std::same_as<null_sequential_source::result_type<void>>;
+    }, "");
 
-// data_source からの可変長読み込み。
+// 可変長読み込み。
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t offset, std::size_t count)
-    -> data_source_result<std::vector<T>> {
+    -> Src::template result_type<std::vector<T>> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * count,
@@ -215,12 +317,42 @@ export template <endian Endian, numberable T, data_source Src>
    }
    return ret_value;
 }
+static_assert(
+    requires(null_data_source src, std::size_t offset, std::size_t size) {
+       {
+          read_vector<std::endian::little, int>(src, offset, size)
+       } -> std::same_as<null_data_source::result_type<std::vector<int>>>;
+    }, "");
+export template <endian Endian, numberable T, sequential_source Src>
+[[nodiscard]] auto read_vector(Src &src, std::size_t count)
+    -> Src::template result_type<std::vector<T>> {
+   auto bytes = src.read(sizeof(T) * count);
+   if (!bytes) {
+      return std::unexpected(bytes.error());
+   }
+   assert(bytes->size == sizeof(T) * count &&
+          "data_source::read() violated its no-short-read contract.");
+   std::vector<T> ret_value;
+   ret_value.reserve(count);
+   for (std::size_t i = 0; i < count; ++i) {
+      std::array<std::byte, sizeof(T)> buf{};
+      std::memcpy(buf.data(), bytes->value.get() + (i * sizeof(T)), sizeof(T));
+      ret_value.push_back(from_bytes<Endian, T>(buf));
+   }
+   return ret_value;
+}
+static_assert(
+    requires(null_sequential_source src, std::size_t size) {
+       {
+          read_vector<std::endian::little, int>(src, size)
+       } -> std::same_as<null_sequential_source::result_type<std::vector<int>>>;
+    }, "");
 
-// data_source への可変長書き込み。
+// 可変長書き込み。
 export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_vector(Src &dst, std::size_t offset,
                                 std::vector<T> const &values)
-    -> data_source_result<void> {
+    -> Src::template result_type<void> {
    std::vector<std::byte> buf(sizeof(T) * values.size());
    for (std::size_t i = 0; i < values.size(); ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -233,5 +365,29 @@ export template <endian Endian, numberable T, writable_data_source Src>
        },
        std::span<std::byte const>(buf.data(), buf.size()));
 }
+static_assert(
+    requires(null_writable_data_source src, std::size_t offset,
+             std::vector<int> data) {
+       {
+          write_vector<std::endian::little>(src, offset, data)
+       } -> std::same_as<null_data_source::result_type<void>>;
+    },
+    "");
+export template <endian Endian, numberable T, writable_sequential_source Src>
+[[nodiscard]] auto write_vector(Src &dst, std::vector<T> const &values)
+    -> Src::template result_type<void> {
+   std::vector<std::byte> buf(sizeof(T) * values.size());
+   for (std::size_t i = 0; i < values.size(); ++i) {
+      auto const encoded = to_bytes<Endian, T>(values[i]);
+      std::memcpy(buf.data() + (i * sizeof(T)), encoded.data(), sizeof(T));
+   }
+   return dst.write(std::span<std::byte const>(buf.data(), buf.size()));
+}
+static_assert(
+    requires(null_writable_sequential_source src, std::vector<int> data) {
+       {
+          write_vector<std::endian::little>(src, data)
+       } -> std::same_as<null_sequential_source::result_type<void>>;
+    }, "");
 
 } // namespace maboroutu

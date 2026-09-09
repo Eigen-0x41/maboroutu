@@ -1,14 +1,14 @@
 module;
-#include <array>
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <vector>
 export module maboroutu.sequential_view;
 export import maboroutu.core;
 export import maboroutu.error;
-export import maboroutu.data_source;
+
 export import maboroutu.binary_convert;
+export import maboroutu.data_source;
+export import maboroutu.sequential_source;
 
 namespace maboroutu {
 
@@ -20,171 +20,87 @@ namespace maboroutu {
 // オンリーな入力（例: 非シーク可能なストリーム）向けの別conceptを導入する
 // 場合にも、このインターフェース（一方向にのみ前進する）のまま矛盾なく
 // 拡張できることを意図した設計。
-export template <data_source Src> struct sequential_view {
+export template <data_source DataSource>
+// [[sequential_view]]
+class sequential_view {
+ public: /*STRUCT_FIELD*/
+   template <class T> using result_type = sequential_source_result<T>;
+   using value_type = DataSource;
+
+ protected:
  private:
-   Src &_src;
-   std::size_t _count = 0; // これまでに成功した読み書きの累積バイト数
+   using self_type = sequential_view;
+
+   value_type *_src;
+   std::size_t _count = 0;
+
+   /*--:  *IMPLIMENT_FIELD*/
+ protected:
+   auto convert_from_data_source_result_error_type(
+       typename value_type::template result_type<void>::error_type const &err) {
+      auto code = err.code();
+      using code_type = decltype(code);
+      switch (auto code = err.code(); code) {
+      case code_type::out_of_range:
+         return make_unexpected(
+             result_type<void>::error_type::code_type::out_of_range);
+      case code_type::operation_failure:
+         return make_unexpected(
+             result_type<void>::error_type::code_type::operation_failure);
+      default:
+      }
+      return make_unexpected(
+          result_type<void>::error_type::code_type::invalid_member_variable);
+   }
 
  public:
    sequential_view() = delete;
-   explicit sequential_view(Src &src, std::size_t initial_count = 0) noexcept
-       : _src(src), _count(initial_count) {}
+   sequential_view(sequential_view const &) = delete;
+   sequential_view(sequential_view &&) = default;
+   explicit sequential_view(value_type &src, std::size_t initial_count = 0)
+       : _src(&src), _count(initial_count) {}
+   ~sequential_view() = default;
 
-   [[nodiscard]] auto count(this sequential_view const &self) noexcept
-       -> std::size_t {
-      return self._count;
+   [[nodiscard]] auto count() const noexcept -> std::size_t { return _count; }
+   [[nodiscard]] auto read(std::size_t rdsize) -> result_type<byte_array> {
+      auto result = _src->read(region{
+          .offset = _count,
+          .size = rdsize,
+      });
+      if (result) [[likely]] {
+         _count += rdsize;
+         return *result;
+      }
+
+      return convert_from_data_source_result_error_type(result.error());
    }
 
-   // n バイトを読み飛ばしたものとして扱う。
-   // NOTE: 現状（data_source限定のスコープ）では _count を進めるだけで
-   // 成立するが、これは Src が実際にはランダムアクセス可能だから
-   // 偶然成立しているに過ぎない。将来フォワードオンリーな Src を
-   // 受け入れる場合、この実装は「n バイトを実際に読んで捨てる」処理へ
-   // 変更する必要がある。
-   auto skip(this sequential_view &self, std::size_t n) noexcept -> void {
+   template <class Self>
+      requires writable_data_source<typename Self::value_type>
+   [[nodiscard]] auto write(this Self &self, std::span<std::byte const> data)
+       -> data_source_result<void> {
+      auto result = self._src->write(
+          region{
+              .offset = self._count,
+              .size = data.size(),
+          },
+          data);
+      if (result) [[likely]] {
+         self._count += data.size();
+         return *result;
+      }
+      return self.convert_from_data_source_result_error_type(result.error());
+   }
+
+   // NOTE: オプション実装
+   template <class Self>
+   auto skip(this Self &self, std::size_t n) noexcept -> void {
       self._count += n;
    }
 
-   [[nodiscard]] auto size(this sequential_view const &self) {
-      return self._src.size();
-   }
-   [[nodiscard]] auto remaining(this sequential_view const &self)
-       -> data_source_result<std::size_t> {
-      auto total = self.size();
-      if (!total) {
-         return std::unexpected(total.error());
-      }
-      return *total - self._count;
-   }
-
-   // 以下、_src への直接アクセスを許可する friend 宣言。
-   // 各自由関数の実際のテンプレートパラメータ列・戻り値型と一致させる
-   // 必要があるため、8関数それぞれに個別宣言する。
-   // クラス自身のテンプレート引数 Src とのシャドーイングを避けるため、
-   // friend宣言側のデータソース型引数は S とする。
-   template <data_source S>
-   friend auto read(sequential_view<S> &, std::size_t)
-       -> data_source_result<byte_array>;
-   template <writable_data_source S>
-   friend auto write(sequential_view<S> &, std::span<std::byte const>)
-       -> data_source_result<void>;
-   template <endian Endian, numberable T, data_source S>
-   friend auto read_value(sequential_view<S> &) -> data_source_result<T>;
-   template <endian Endian, numberable T, writable_data_source S>
-   friend auto write_value(sequential_view<S> &, T)
-       -> data_source_result<void>;
-   template <endian Endian, numberable T, std::size_t Size, data_source S>
-   friend auto read_array(sequential_view<S> &)
-       -> data_source_result<std::array<T, Size>>;
-   template <endian Endian, numberable T, std::size_t Size,
-             writable_data_source S>
-   friend auto write_array(sequential_view<S> &, std::array<T, Size> const &)
-       -> data_source_result<void>;
-   template <endian Endian, numberable T, data_source S>
-   friend auto read_vector(sequential_view<S> &, std::size_t)
-       -> data_source_result<std::vector<T>>;
-   template <endian Endian, numberable T, writable_data_source S>
-   friend auto write_vector(sequential_view<S> &, std::vector<T> const &)
-       -> data_source_result<void>;
+   auto operator=(sequential_view const &rhs) -> sequential_view & = delete;
+   auto operator=(sequential_view &&rhs) -> sequential_view & = default;
 };
-
-// --- 生バイト列の読み書き（binary_convert非依存、data_sourceのみに依存） ---
-
-export template <data_source Src>
-[[nodiscard]] auto read(sequential_view<Src> &src, std::size_t size)
-    -> data_source_result<byte_array> {
-   auto result = src._src.read(region{
-       .offset = src.count(),
-       .size = size,
-   });
-   if (result) {
-      src.skip(size);
-   }
-   return result;
-}
-
-export template <writable_data_source Src>
-[[nodiscard]] auto write(sequential_view<Src> &dst,
-                         std::span<std::byte const> data)
-    -> data_source_result<void> {
-   auto result = dst._src.write(
-       region{
-           .offset = dst.count(),
-           .size = data.size(),
-       },
-       data);
-   if (result) {
-      dst.skip(data.size());
-   }
-   return result;
-}
-
-// --- binary_convert と同名のオーバーロード（薄い委譲） ---
-
-export template <endian Endian, numberable T, data_source Src>
-[[nodiscard]] auto read_value(sequential_view<Src> &src)
-    -> data_source_result<T> {
-   auto result = maboroutu::read_value<Endian, T>(src._src, src.count());
-   if (result) {
-      src.skip(sizeof(T));
-   }
-   return result;
-}
-
-export template <endian Endian, numberable T, writable_data_source Src>
-[[nodiscard]] auto write_value(sequential_view<Src> &dst, T value)
-    -> data_source_result<void> {
-   auto result = maboroutu::write_value<Endian, T>(dst._src, dst.count(), value);
-   if (result) {
-      dst.skip(sizeof(T));
-   }
-   return result;
-}
-
-export template <endian Endian, numberable T, std::size_t Size, data_source Src>
-[[nodiscard]] auto read_array(sequential_view<Src> &src)
-    -> data_source_result<std::array<T, Size>> {
-   auto result = maboroutu::read_array<Endian, T, Size>(src._src, src.count());
-   if (result) {
-      src.skip(sizeof(T) * Size);
-   }
-   return result;
-}
-
-export template <endian Endian, numberable T, std::size_t Size,
-                 writable_data_source Src>
-[[nodiscard]] auto write_array(sequential_view<Src> &dst,
-                               std::array<T, Size> const &values)
-    -> data_source_result<void> {
-   auto result =
-       maboroutu::write_array<Endian, T, Size>(dst._src, dst.count(), values);
-   if (result) {
-      dst.skip(sizeof(T) * Size);
-   }
-   return result;
-}
-
-export template <endian Endian, numberable T, data_source Src>
-[[nodiscard]] auto read_vector(sequential_view<Src> &src, std::size_t count)
-    -> data_source_result<std::vector<T>> {
-   auto result =
-       maboroutu::read_vector<Endian, T>(src._src, src.count(), count);
-   if (result) {
-      src.skip(sizeof(T) * count);
-   }
-   return result;
-}
-
-export template <endian Endian, numberable T, writable_data_source Src>
-[[nodiscard]] auto write_vector(sequential_view<Src> &dst,
-                                std::vector<T> const &values)
-    -> data_source_result<void> {
-   auto result =
-       maboroutu::write_vector<Endian, T>(dst._src, dst.count(), values);
-   if (result) {
-      dst.skip(sizeof(T) * values.size());
-   }
-   return result;
-}
+static_assert(sequential_source<sequential_view<null_data_source>>, "");
 
 } // namespace maboroutu
