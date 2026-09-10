@@ -63,7 +63,7 @@ class writable_sequential_source_handle {
          return value.write(data);
       }
       [[nodiscard]] auto count() const -> std::size_t override {
-         return value.size();
+         return value.count();
       }
       [[nodiscard]] auto try_clone() const
           -> std::unique_ptr<_concept> override {
@@ -136,7 +136,7 @@ class sequential_source_handle {
          return value.read(size);
       }
       [[nodiscard]] auto count() const -> std::size_t override {
-         return value.size();
+         return value.count();
       }
       [[nodiscard]] auto try_clone() const
           -> std::unique_ptr<_concept> override {
@@ -235,5 +235,14 @@ static_assert(std::is_constructible_v<sequential_source_handle,
 static_assert(std::is_constructible_v<writable_sequential_source_handle,
                                       null_writable_sequential_source &>,
               "");
+
+// NOTE: handle経由のcount()を実際に呼び出す検証は、static_assert
+// だけでは仮想関数の本体（_model<T>::count()）まで実体化
+// されないため検出できない。上記のような size()/count() 取り違えを
+// 再発させないため、GTest側で
+// sequential_source_handle{null_sequential_source{}}.count() /
+// writable_sequential_source_handle{null_writable_sequential_source{}}
+//     .count()
+// を実際に呼び出す実行時テストを追加することを推奨する。
 
 } // namespace maboroutu

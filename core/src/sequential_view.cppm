@@ -17,9 +17,9 @@ namespace maboroutu {
 //
 // NOTE: 現状は data_source concept（ランダムアクセス前提）を土台とする
 // ため、任意offsetへの seek() は意図的に公開しない。将来、真にフォワード
-// オンリーな入力（例: 非シーク可能なストリーム）向けの別conceptを導入する
-// 場合にも、このインターフェース（一方向にのみ前進する）のまま矛盾なく
-// 拡張できることを意図した設計。
+// オンリーな入力（例: 非シーク可能なストリーム）向けの別concept
+// を導入する場合にも、このインターフェース（一方向にのみ前進する）のまま
+// 矛盾なく拡張できることを意図した設計。
 export template <data_source DataSource>
 // [[sequential_view]]
 class sequential_view {
@@ -48,6 +48,7 @@ class sequential_view {
          return make_unexpected(
              result_type<void>::error_type::code_type::operation_failure);
       default:
+         break;
       }
       return make_unexpected(
           result_type<void>::error_type::code_type::invalid_member_variable);
@@ -78,7 +79,7 @@ class sequential_view {
    template <class Self>
       requires writable_data_source<typename Self::value_type>
    [[nodiscard]] auto write(this Self &self, std::span<std::byte const> data)
-       -> data_source_result<void> {
+       -> result_type<void> {
       auto result = self._src->write(
           region{
               .offset = self._count,
@@ -87,7 +88,7 @@ class sequential_view {
           data);
       if (result) [[likely]] {
          self._count += data.size();
-         return *result;
+         return {};
       }
       return self.convert_from_data_source_result_error_type(result.error());
    }
@@ -102,5 +103,7 @@ class sequential_view {
    auto operator=(sequential_view &&rhs) -> sequential_view & = default;
 };
 static_assert(sequential_source<sequential_view<null_data_source>>, "");
+static_assert(
+    writable_sequential_source<sequential_view<null_writable_data_source>>, "");
 
 } // namespace maboroutu
