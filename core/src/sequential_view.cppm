@@ -2,6 +2,7 @@ module;
 #include <cstddef>
 #include <expected>
 #include <span>
+#include <utility>
 export module maboroutu.sequential_view;
 export import maboroutu.core;
 export import maboroutu.error;
@@ -36,11 +37,11 @@ class sequential_view {
 
    /*--:  *IMPLIMENT_FIELD*/
  protected:
-   auto convert_from_data_source_result_error_type(
-       typename value_type::template result_type<void>::error_type const &err) {
-      auto code = err.code();
+   template <class ResultT>
+   auto convert_from_data_source_result_error_type(ResultT const &result) {
+      auto code = result.error().code();
       using code_type = decltype(code);
-      switch (auto code = err.code(); code) {
+      switch (code) {
       case code_type::out_of_range:
          return make_unexpected(
              result_type<void>::error_type::code_type::out_of_range);
@@ -73,7 +74,7 @@ class sequential_view {
          return *result;
       }
 
-      return convert_from_data_source_result_error_type(result.error());
+      return convert_from_data_source_result_error_type(result);
    }
 
    template <class Self>
@@ -90,7 +91,7 @@ class sequential_view {
          self._count += data.size();
          return {};
       }
-      return self.convert_from_data_source_result_error_type(result.error());
+      return self.convert_from_data_source_result_error_type(result);
    }
 
    // NOTE: オプション実装

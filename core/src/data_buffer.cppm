@@ -1,5 +1,6 @@
 module;
 #include <concepts>
+#include <memory>
 #include <span>
 export module maboroutu.data_buffer;
 export import maboroutu.core;
@@ -29,5 +30,41 @@ concept data_buffer =
           buf.view(r)
        } -> std::same_as<data_buffer_result<std::span<std::byte>>>;
     };
+
+// NOTE: concept検証兼 posix /dev/null の模倣
+export struct null_data_buffer {
+   template <class T> using result_type = data_source_result<T>;
+
+   [[nodiscard]] static auto size() -> result_type<std::size_t> { return 0; }
+   [[nodiscard]] static auto read(region r) -> result_type<byte_array> {
+      return byte_array{
+          .value = std::make_unique<byte_array::value_type>(r.size),
+          .size = r.size,
+      };
+   }
+   [[nodiscard]] auto write(region, std::span<std::byte const>)
+       -> result_type<void> {
+      return {};
+   }
+
+   static auto append(std::span<std::byte const> n)
+       -> data_buffer_result<region> {
+      return region{
+          .offset = 0,
+          .size = 0,
+      };
+   }
+   static auto grow(std::size_t n) -> data_buffer_result<region> {
+      return region{
+          .offset = 0,
+          .size = 0,
+      };
+   }
+   static auto view(region r) -> data_buffer_result<std::span<std::byte>> {
+      return make_unexpected(
+          data_buffer_result<void>::error_type::code_type::out_of_range);
+   }
+};
+static_assert(data_buffer<null_data_buffer>, "");
 
 } // namespace maboroutu
