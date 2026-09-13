@@ -195,14 +195,14 @@ export template <std::derived_from<std::iostream> Stream>
 class stream_writable_data_source : public stream_data_source<Stream> {
  public: /*STRUCT_FIELD*/
    using value_type = Stream;
-   template <class T>
-   using result_type = stream_data_source<Stream>::template result_type<T>;
 
  protected:
    // value_type data;
 
  private:
    using self_type = stream_writable_data_source;
+   template <class T>
+   using result_type = stream_data_source<Stream>::template result_type<T>;
    using errc_type = result_type<void>::error_type::code_type;
 
    /*--:  *IMPLIMENT_FIELD*/

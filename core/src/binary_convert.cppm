@@ -127,7 +127,7 @@ export template <endian Endian, numberable T>
 // 単一値読み込み。
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_value(Src &src, std::size_t offset)
-    -> Src::template result_type<T> {
+    -> data_source_result<T> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T),
@@ -145,10 +145,10 @@ static_assert(
     requires(null_data_source src, std::size_t size) {
        {
           read_value<std::endian::little, int>(src, size)
-       } -> std::same_as<null_data_source::result_type<int>>;
+       } -> std::same_as<data_source_result<int>>;
     }, "");
 export template <endian Endian, numberable T, sequential_source Src>
-[[nodiscard]] auto read_value(Src &src) -> Src::template result_type<T> {
+[[nodiscard]] auto read_value(Src &src) -> sequential_source_result<T> {
    auto bytes = src.read(sizeof(T));
    if (!bytes) {
       return std::unexpected(bytes.error());
@@ -163,13 +163,13 @@ static_assert(
     requires(null_sequential_source src, std::size_t size) {
        {
           read_value<std::endian::little, int>(src)
-       } -> std::same_as<null_sequential_source::result_type<int>>;
+       } -> std::same_as<sequential_source_result<int>>;
     }, "");
 
 // 単一値書き込み。
 export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_value(Src &dst, std::size_t offset, T value)
-    -> Src::template result_type<void> {
+    -> data_source_result<void> {
    auto const bytes = to_bytes<Endian, T>(value);
    return dst.write(
        region{
@@ -182,12 +182,12 @@ static_assert(
     requires(null_writable_data_source src, std::size_t offset, int value) {
        {
           write_value<std::endian::little, int>(src, offset, value)
-       } -> std::same_as<null_data_source::result_type<void>>;
+       } -> std::same_as<data_source_result<void>>;
     }, "");
 
 export template <endian Endian, numberable T, writable_sequential_source Src>
 [[nodiscard]] auto write_value(Src &dst, T value)
-    -> Src::template result_type<void> {
+    -> sequential_source_result<void> {
    auto const bytes = to_bytes<Endian, T>(value);
    return dst.write(std::span<std::byte const>(bytes.data(), bytes.size()));
 }
@@ -195,13 +195,13 @@ static_assert(
     requires(null_writable_sequential_source src, int value) {
        {
           write_value<std::endian::little>(src, value)
-       } -> std::same_as<null_sequential_source::result_type<void>>;
+       } -> std::same_as<sequential_source_result<void>>;
     }, "");
 
 // 固定長配列読み込み。
 export template <endian Endian, numberable T, std::size_t Size, data_source Src>
 [[nodiscard]] auto read_array(Src &src, std::size_t offset)
-    -> Src::template result_type<std::array<T, Size>> {
+    -> data_source_result<std::array<T, Size>> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * Size,
@@ -223,12 +223,12 @@ static_assert(
     requires(null_data_source src, std::size_t offset) {
        {
           read_array<std::endian::little, int, 2>(src, offset)
-       } -> std::same_as<null_data_source::result_type<std::array<int, 2>>>;
+       } -> std::same_as<data_source_result<std::array<int, 2>>>;
     }, "");
 export template <endian Endian, numberable T, std::size_t Size,
                  sequential_source Src>
 [[nodiscard]] auto read_array(Src &src)
-    -> Src::template result_type<std::array<T, Size>> {
+    -> sequential_source_result<std::array<T, Size>> {
    auto bytes = src.read(sizeof(T) * Size);
    if (!bytes) {
       return std::unexpected(bytes.error());
@@ -247,8 +247,7 @@ static_assert(
     requires(null_sequential_source src) {
        {
           read_array<std::endian::little, int, 2>(src)
-       }
-       -> std::same_as<null_sequential_source::result_type<std::array<int, 2>>>;
+       } -> std::same_as<sequential_source_result<std::array<int, 2>>>;
     }, "");
 
 // 固定長配列書き込み。
@@ -256,7 +255,7 @@ export template <endian Endian, numberable T, std::size_t Size,
                  writable_data_source Src>
 [[nodiscard]] auto write_array(Src &dst, std::size_t offset,
                                std::array<T, Size> const &values)
-    -> Src::template result_type<void> {
+    -> data_source_result<void> {
    std::array<std::byte, sizeof(T) * Size> buf{};
    for (std::size_t i = 0; i < Size; ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -274,13 +273,13 @@ static_assert(
              std::array<int, 2> value) {
        {
           write_array<std::endian::little, int, 2>(src, offset, value)
-       } -> std::same_as<null_writable_data_source::result_type<void>>;
+       } -> std::same_as<data_source_result<void>>;
     },
     "");
 export template <endian Endian, numberable T, std::size_t Size,
                  writable_sequential_source Src>
 [[nodiscard]] auto write_array(Src &dst, std::array<T, Size> const &values)
-    -> Src::template result_type<void> {
+    -> sequential_source_result<void> {
    std::array<std::byte, sizeof(T) * Size> buf{};
    for (std::size_t i = 0; i < Size; ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -292,13 +291,13 @@ static_assert(
     requires(null_writable_sequential_source src, std::array<int, 2> value) {
        {
           write_array<std::endian::little, int, 2>(src, value)
-       } -> std::same_as<null_sequential_source::result_type<void>>;
+       } -> std::same_as<sequential_source_result<void>>;
     }, "");
 
 // 可変長読み込み。
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t offset, std::size_t count)
-    -> Src::template result_type<std::vector<T>> {
+    -> data_source_result<std::vector<T>> {
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * count,
@@ -321,11 +320,11 @@ static_assert(
     requires(null_data_source src, std::size_t offset, std::size_t size) {
        {
           read_vector<std::endian::little, int>(src, offset, size)
-       } -> std::same_as<null_data_source::result_type<std::vector<int>>>;
+       } -> std::same_as<data_source_result<std::vector<int>>>;
     }, "");
 export template <endian Endian, numberable T, sequential_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t count)
-    -> Src::template result_type<std::vector<T>> {
+    -> sequential_source_result<std::vector<T>> {
    auto bytes = src.read(sizeof(T) * count);
    if (!bytes) {
       return std::unexpected(bytes.error());
@@ -345,14 +344,14 @@ static_assert(
     requires(null_sequential_source src, std::size_t size) {
        {
           read_vector<std::endian::little, int>(src, size)
-       } -> std::same_as<null_sequential_source::result_type<std::vector<int>>>;
+       } -> std::same_as<sequential_source_result<std::vector<int>>>;
     }, "");
 
 // 可変長書き込み。
 export template <endian Endian, numberable T, writable_data_source Src>
 [[nodiscard]] auto write_vector(Src &dst, std::size_t offset,
                                 std::vector<T> const &values)
-    -> Src::template result_type<void> {
+    -> data_source_result<void> {
    std::vector<std::byte> buf(sizeof(T) * values.size());
    for (std::size_t i = 0; i < values.size(); ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -370,12 +369,12 @@ static_assert(
              std::vector<int> data) {
        {
           write_vector<std::endian::little>(src, offset, data)
-       } -> std::same_as<null_data_source::result_type<void>>;
+       } -> std::same_as<data_source_result<void>>;
     },
     "");
 export template <endian Endian, numberable T, writable_sequential_source Src>
 [[nodiscard]] auto write_vector(Src &dst, std::vector<T> const &values)
-    -> Src::template result_type<void> {
+    -> sequential_source_result<void> {
    std::vector<std::byte> buf(sizeof(T) * values.size());
    for (std::size_t i = 0; i < values.size(); ++i) {
       auto const encoded = to_bytes<Endian, T>(values[i]);
@@ -387,7 +386,7 @@ static_assert(
     requires(null_writable_sequential_source src, std::vector<int> data) {
        {
           write_vector<std::endian::little>(src, data)
-       } -> std::same_as<null_sequential_source::result_type<void>>;
+       } -> std::same_as<sequential_source_result<void>>;
     }, "");
 
 } // namespace maboroutu

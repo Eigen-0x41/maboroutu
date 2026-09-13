@@ -25,10 +25,6 @@ using data_source_result = result<T, errc::data_source>;
 
 export template <class T>
 concept data_source = requires(T &src, region r) {
-   typename T::template result_type<void>;
-   requires std::same_as<typename T::template result_type<void>,
-                         data_source_result<void>>;
-
    { src.read(r) } -> std::same_as<data_source_result<byte_array>>;
    { src.size() } -> std::same_as<data_source_result<std::size_t>>;
 };

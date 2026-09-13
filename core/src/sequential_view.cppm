@@ -24,12 +24,12 @@ export template <data_source DataSource>
 // [[sequential_view]]
 class sequential_view {
  public: /*STRUCT_FIELD*/
-   template <class T> using result_type = sequential_source_result<T>;
    using value_type = DataSource;
 
  protected:
  private:
    using self_type = sequential_view;
+   template <class T> using result_type = sequential_source_result<T>;
 
    value_type *_src;
    std::size_t _count = 0;

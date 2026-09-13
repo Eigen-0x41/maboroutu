@@ -23,10 +23,6 @@ using sequential_source_result = result<T, errc::sequential_source>;
 
 export template <class T>
 concept sequential_source = requires(T &src, std::size_t n) {
-   typename T::template result_type<void>;
-   requires std::same_as<typename T::template result_type<void>,
-                         sequential_source_result<void>>;
-
    { src.count() } -> std::same_as<std::size_t>;
    { src.read(n) } -> std::same_as<sequential_source_result<byte_array>>;
 };
@@ -40,6 +36,7 @@ concept writable_sequential_source =
     };
 
 class writable_sequential_source_handle {
+   template <class T> using result_type = sequential_source_result<T>;
    struct _concept {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(std::size_t)
@@ -81,8 +78,6 @@ class writable_sequential_source_handle {
        : _value(std::move(value)) {}
 
  public:
-   template <class T> using result_type = sequential_source_result<T>;
-
    template <class T>
    writable_sequential_source_handle(T value)
       requires writable_sequential_source<T> &&
@@ -119,6 +114,7 @@ static_assert(!std::is_constructible_v<writable_sequential_source_handle,
               "");
 
 class sequential_source_handle {
+   template <class T> using result_type = sequential_source_result<T>;
    struct _concept {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(std::size_t)
@@ -154,8 +150,6 @@ class sequential_source_handle {
        : _value(std::move(value)) {}
 
  public:
-   template <class T> using result_type = sequential_source_result<T>;
-
    sequential_source_handle() = delete;
    sequential_source_handle(sequential_source_handle const &) = delete;
    sequential_source_handle(sequential_source_handle &&) = default;
@@ -192,6 +186,7 @@ static_assert(!std::is_constructible_v<sequential_source_handle,
 export struct null_sequential_source {
    template <class T> using result_type = sequential_source_result<T>;
 
+ public:
    [[nodiscard]] static auto count() -> std::size_t { return 0; }
    [[nodiscard]] static auto read(std::size_t size)
        -> sequential_source_result<byte_array> {
@@ -213,6 +208,7 @@ static_assert(!std::is_constructible_v<writable_sequential_source_handle,
 export struct null_writable_sequential_source {
    template <class T> using result_type = sequential_source_result<T>;
 
+ public:
    [[nodiscard]] static auto count() noexcept -> std::size_t { return 0; }
    [[nodiscard]] static auto read(std::size_t size) noexcept
        -> sequential_source_result<byte_array> {

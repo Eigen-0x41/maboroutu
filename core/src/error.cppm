@@ -238,6 +238,10 @@ export template <class T, class Code, class Detail = std::monostate,
                  class DetailDeleter = std::default_delete<Detail>>
 using result = std::expected<T, error<Code, Detail, DetailDeleter>>;
 
+export template <class T, class Code, class Detail, class DetailDeleter>
+concept resultable = std::same_as<result<void, Code, Detail, DetailDeleter>,
+                                  result<T, Code, Detail, DetailDeleter>>;
+
 /**
  * @brief error<Code, Detail, DetailDeleter> を保持する std::unexpected を
  * 構築するヘルパー関数。
