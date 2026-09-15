@@ -4,11 +4,8 @@ module;
 export module maboroutu.slot_map:node;
 
 namespace maboroutu {
-// NOTE: exportせずとも利用可能なはず。
-// ただし、gcc15ではコンパイルできなかった。
-// 回避として入れるが、まだテストされていない。
 // [[islot_map_node]]
-export template <class DependT, class T, class IIndex> class slot_map_node {
+template <class DependT, class T, class IIndex> class slot_map_node {
  public: /*STRUCT_FIELD*/
    using value_type = T;
    using iindex_type = IIndex;
