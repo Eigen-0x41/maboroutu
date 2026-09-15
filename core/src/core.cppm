@@ -38,7 +38,13 @@ concept one_of = (std::same_as<T, ArgsT> || ...);
 
 export template <class... Args>
 struct contains_duplicate_t : std::false_type {};
-export template <class T, class... Args>
+// NOTE: 部分特殊化自体には export を付けない。既にexportされている
+// 一次テンプレート(contains_duplicate_t)の特殊化は、規格上自動的に
+// exportされる対象となるため、この行に重ねて export を書くことはできない
+// (GCC15で「declaration of partial specialization in unbraced
+//  export-declaration」として検出されるようになった。Clang18/GCC14では
+//  許容されていたが、それらの方が非準拠だったと考えられる)。
+template <class T, class... Args>
 struct contains_duplicate_t<T, Args...>
     : std::conditional_t<one_of<T, Args...>, std::true_type,
                          contains_duplicate_t<Args...>> {};
