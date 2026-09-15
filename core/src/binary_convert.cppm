@@ -133,7 +133,7 @@ export template <endian Endian, numberable T, data_source Src>
        .size = sizeof(T),
    });
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) &&
           "data_source::read() violated its no-short-read contract.");
@@ -151,7 +151,7 @@ export template <endian Endian, numberable T, sequential_source Src>
 [[nodiscard]] auto read_value(Src &src) -> sequential_source_result<T> {
    auto bytes = src.read(sizeof(T));
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) &&
           "data_source::read() violated its no-short-read contract.");
@@ -207,7 +207,7 @@ export template <endian Endian, numberable T, std::size_t Size, data_source Src>
        .size = sizeof(T) * Size,
    });
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) * Size &&
           "data_source::read() violated its no-short-read contract.");
@@ -231,7 +231,7 @@ export template <endian Endian, numberable T, std::size_t Size,
     -> sequential_source_result<std::array<T, Size>> {
    auto bytes = src.read(sizeof(T) * Size);
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) * Size &&
           "data_source::read() violated its no-short-read contract.");
@@ -303,7 +303,7 @@ export template <endian Endian, numberable T, data_source Src>
        .size = sizeof(T) * count,
    });
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) * count &&
           "data_source::read() violated its no-short-read contract.");
@@ -327,7 +327,7 @@ export template <endian Endian, numberable T, sequential_source Src>
     -> sequential_source_result<std::vector<T>> {
    auto bytes = src.read(sizeof(T) * count);
    if (!bytes) {
-      return std::unexpected(bytes.error());
+      return std::unexpected(std::move(bytes).error());
    }
    assert(bytes->size == sizeof(T) * count &&
           "data_source::read() violated its no-short-read contract.");

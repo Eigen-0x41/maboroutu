@@ -71,7 +71,7 @@ class sequential_view {
       });
       if (result) [[likely]] {
          _count += rdsize;
-         return *result;
+         return std::move(*result);
       }
 
       return convert_from_data_source_result_error_type(result);

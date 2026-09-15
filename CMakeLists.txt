@@ -12,8 +12,7 @@ if(DEFINED ENV{VCPKG_ROOT})
 endif()
 
 project(maboroutu LANGUAGES NONE)
-set(WORKSPACE_NAME "${CMAKE_PROJECT_NAME}"
-  CACHE STRING "Name of the overall workspace")
+set(WORKSPACE_NAME "${PROJECT_NAME}")
 
 add_subdirectory(core)
 option(MABOROUTU_ENABLE_EXTENSION

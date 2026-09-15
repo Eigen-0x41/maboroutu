@@ -134,7 +134,7 @@ class stream_data_source {
          self.data.clear();
       }
       if (auto result = self.seekg(reg.offset); !result) {
-         return std::unexpected{result.error()};
+         return std::unexpected{std::move(result).error()};
       }
       byte_array ret_value{
           .value = std::make_unique<decltype(ret_value)::value_type>(reg.size),
@@ -176,11 +176,11 @@ class stream_data_source {
          self.data.clear();
       }
       if (auto result = self.seekg(0, std::ios_base::end); !result) {
-         return std::unexpected{result.error()};
+         return std::unexpected{std::move(result).error()};
       }
       auto const endpos = self.data.tellg();
       if (auto result = self.seekg(0); !result) {
-         return std::unexpected{result.error()};
+         return std::unexpected{std::move(result).error()};
       }
       return endpos - self.data.tellg();
    }
@@ -246,7 +246,7 @@ class stream_writable_data_source : public stream_data_source<Stream> {
          return make_unexpected(errc_type::out_of_range);
       }
       if (auto result = self.seekp(reg.offset); !result) {
-         return std::unexpected{result.error()};
+         return std::unexpected{std::move(result).error()};
       }
       self.data.write(reinterpret_cast<char const *>(data.data()), reg.size);
       if (self.data.bad()) [[unlikely]] {

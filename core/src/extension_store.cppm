@@ -20,6 +20,7 @@ template <class... Args> struct local_typeid {
    }
    template <class T> static consteval auto cmp() -> size_t {
       static_assert(false, "is not entry type!");
+      return 0; // unreachable: static_assert(false) always fires first
    }
 
  public:
@@ -45,7 +46,7 @@ export template <class... Types> class extension_store {
        std::array<std::variant<std::monostate, std::unique_ptr<Types>...>,
                   sizeof...(Types)>;
 
-   static_assert(value_type::size() == id::size(), "is match size.");
+   static_assert(std::tuple_size_v<value_type> == id::size(), "is match size.");
 
    value_type _data{};
 
@@ -118,8 +119,11 @@ export template <class... Types> class extension_store {
    }
 
    template <class Visitor>
-      requires(std::invocable<Visitor &, const Types &> && ...)
-   auto visit_each(this const self_type &self, Visitor &&vis) -> self_type {
+      requires(std::invocable<Visitor &, const Types &> && ...) &&
+              (std::constructible_from<
+                   Types, std::invoke_result_t<Visitor &, const Types &>> &&
+               ...)
+   auto transform_each(this const self_type &self, Visitor &&vis) -> self_type {
       self_type ret_value;
       for (auto const &slot : self._data) {
          std::visit(
@@ -127,7 +131,8 @@ export template <class... Types> class extension_store {
                 using alt_t = std::remove_cvref_t<decltype(alt)>;
                 if constexpr (!std::is_same_v<alt_t, std::monostate>) {
                    if (alt) {
-                      ret_value.template set<alt_t::element_type>(vis(*alt));
+                      ret_value.template set<typename alt_t::element_type>(
+                          vis(*alt));
                    }
                 }
              },

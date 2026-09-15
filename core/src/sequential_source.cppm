@@ -35,7 +35,7 @@ concept writable_sequential_source =
        { dst.write(data) } -> std::same_as<sequential_source_result<void>>;
     };
 
-class writable_sequential_source_handle {
+export class writable_sequential_source_handle {
    template <class T> using result_type = sequential_source_result<T>;
    struct _concept {
       virtual ~_concept() = default;
@@ -113,7 +113,7 @@ static_assert(!std::is_constructible_v<writable_sequential_source_handle,
                                        writable_sequential_source_handle &>,
               "");
 
-class sequential_source_handle {
+export class sequential_source_handle {
    template <class T> using result_type = sequential_source_result<T>;
    struct _concept {
       virtual ~_concept() = default;
