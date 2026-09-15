@@ -23,8 +23,7 @@ export template <typename T> struct basic_region {
 
 export using region = basic_region<std::size_t>;
 
-export template <typename T>
-struct dynamic_array {
+export template <typename T> struct dynamic_array {
    using element_type = T;
    using value_type = element_type[];
    std::unique_ptr<value_type> value;
