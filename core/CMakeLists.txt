@@ -46,7 +46,7 @@ else()
 endif()
 add_library(${WORKSPACE_NAME}::${PROJECT_COMPONENT} ALIAS ${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_26)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 
 file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
   "${PROJECT_SOURCE_DIR}/src/*.cppm")
