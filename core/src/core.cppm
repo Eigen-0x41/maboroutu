@@ -7,9 +7,9 @@ module;
 export module maboroutu.core;
 
 #if defined(__clang__)
-static_assert(__clang_major__ >= 16, "mylib requires Clang 16+");
+static_assert(__clang_major__ >= 18, "mylib requires Clang 16+");
 #elif defined(__GNUC__)
-static_assert(__GNUC__ >= 13, "mylib requires GCC 13+");
+static_assert(__GNUC__ >= 15, "mylib requires GCC 13+");
 #elif defined(_MSC_VER)
 static_assert(_MSC_VER >= 1951,
               "mylib requires MSVC Build Tools 14.51+ (Visual Studio 2026)");
