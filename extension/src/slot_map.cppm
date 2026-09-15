@@ -105,9 +105,11 @@ class basic_slot_map {
    class basic_iterator {
     public: /*STRUCT_FIELD*/
       using difference_type = std::ptrdiff_t;
+      // NOTE:
+      // gccでは同名のエイリアスを新たに定義する際に既存のエイリアスを使用できない。
+      // 本来はbasic_slot_mapのvalue_typeを利用する。
       using value_type = typename std::pair<
-          index_type const,
-          typename std::conditional_t<IsConst, value_type const, value_type> &>;
+          index_type const, typename std::conditional_t<IsConst, T const, T> &>;
       using iterator_concept = std::bidirectional_iterator_tag;
 
       //! @brief `operator->()` が返す、`value_type`（`std::pair<index_type
