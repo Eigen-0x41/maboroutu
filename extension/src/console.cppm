@@ -75,7 +75,7 @@ export auto make_args_wrap(int argc, char *argv[]) -> args_base_type {
 } // namespace maboroutu
 
 using namespace maboroutu;
-export template <>
+template <>
 struct std::formatter<command_hander> : std::formatter<const char *> {
    auto format(command_hander const &hander, std::format_context &ctx) const {
       auto out = ctx.out();
