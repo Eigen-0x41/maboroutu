@@ -4,6 +4,7 @@ module;
 #include <functional>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 export module maboroutu.keyed_slot_map;
 export import maboroutu.error;
 import maboroutu.slot_map;
