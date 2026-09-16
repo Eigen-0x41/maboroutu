@@ -333,8 +333,10 @@ class basic_slot_map {
  public:
    //! @brief 構築済み要素を走査する、書き込み可能な双方向イテレータ。
    using iterator = basic_iterator<false>;
+   friend iterator;
    //! @brief 構築済み要素を走査する、読み取り専用の双方向イテレータ。
    using const_iterator = basic_iterator<true>;
+   friend const_iterator;
 
    /**
     * @brief デフォルトコンストラクタ。
