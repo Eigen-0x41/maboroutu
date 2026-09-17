@@ -192,28 +192,28 @@ class basic_slot_map_iterator {
 
    //! @brief 前置インクリメント。次に構築済みの要素（なければ
    //! end()）へ進む。
-   friend constexpr auto operator++(self_type &self) -> self_type & {
+   constexpr auto operator++(this self_type &self) -> self_type & {
       self._idx_s = (static_cast<IIndex>(depend_type::npos) != self._idx_s)
                         ? self._data->_node_at(self._idx_s).next()
                         : self._data->_head_index();
       return self;
    }
    //! @brief 後置インクリメント。
-   friend constexpr auto operator++(self_type &self, int) -> self_type {
+   constexpr auto operator++(this self_type &self, int) -> self_type {
       self_type ret_value = self;
       ++self;
       return ret_value;
    }
 
    //! @brief 前置デクリメント。1つ前に構築済みの要素へ戻る。
-   friend constexpr auto operator--(self_type &self) -> self_type & {
+   constexpr auto operator--(this self_type &self) -> self_type & {
       self._idx_s = (static_cast<IIndex>(depend_type::npos) != self._idx_s)
                         ? self._data->_node_at(self._idx_s).prev()
                         : self._data->_tail_index();
       return self;
    }
    //! @brief 後置デクリメント。
-   friend constexpr auto operator--(self_type &self, int) -> self_type {
+   constexpr auto operator--(this self_type &self, int) -> self_type {
       self_type ret_value = self;
       --self;
       return ret_value;
@@ -221,7 +221,7 @@ class basic_slot_map_iterator {
 
    //! @brief 間接参照。`(index_type const, value_type&)` のペアを返す。
    //! @pre 現在位置が構築済みの要素を指していること（未構築の場合 assert）。
-   friend constexpr auto operator*(self_type const &self) -> value_type {
+   constexpr auto operator*(this self_type const &self) -> value_type {
       auto &data = self._data->_node_at(self._idx_s);
       assert(data.has_value());
       return std::make_pair(
@@ -289,8 +289,8 @@ class basic_slot_map_iterator {
  * 世代（generation）カウンタを持たない実装であるため、erase()後に再利用された
  *          スロットへ古いハンドルでアクセスした場合の無効化検出はできない
  *          （仕様書4.6節「位置づけ（重要な設計上の注記）」参照）。
- * @note `get_if` は `std::variant::get_if` の前例に倣い自由関数として提供する
- *       （メンバ関数 `extension_store::get_if`
+ * @note `get_if` は `std::variant::get_if`
+ * の前例に倣い自由関数として提供する （メンバ関数 `extension_store::get_if`
  * とは異なる設計判断。仕様書1.5節参照）。
  */
 // [[basic_slot_map]]
@@ -299,7 +299,8 @@ export template <class IndexT, class T, class MakeContainerT>
             std::unsigned_integral<std::underlying_type_t<IndexT>>
 class basic_slot_map {
  public: /*STRUCT_FIELD*/
-   //! @brief 安定ハンドル（要素へアクセスするためのキー）の型。テンプレート引数
+   //! @brief
+   //! 安定ハンドル（要素へアクセスするためのキー）の型。テンプレート引数
    //! IndexT。
    using index_type = IndexT;
    //! @brief 格納する値の型。テンプレート引数 T。
@@ -321,10 +322,12 @@ class basic_slot_map {
    //         privateアクセサへのアクセス許可。
    template <class, class, class, bool> friend class basic_slot_map_iterator;
 
-   //! @brief 内部の帳簿管理（prev/nextリンク・番兵値比較）専用のインデックス型
+   //! @brief
+   //! 内部の帳簿管理（prev/nextリンク・番兵値比較）専用のインデックス型
    //!        （=
    //!        `std::underlying_type_t<IndexT>`）。`size_type`（`size_t`）とは独立しており、
-   //!        `IndexT` の基底型の幅・符号にかかわらず番兵値比較の整合性を保つ。
+   //!        `IndexT`
+   //!        の基底型の幅・符号にかかわらず番兵値比較の整合性を保つ。
    using iindex_type = std::underlying_type_t<index_type>;
    //! @brief 要素の構築状態・prev/nextリンク情報を保持する内部ノード型
    //!        （モジュールパーティション `:node` で定義）。
@@ -335,7 +338,8 @@ class basic_slot_map {
 
    //! @brief ノード実体を保持する内部コンテナ本体。
    container_type _container{};
-   //! @brief 構築済みリストの先頭（begin()）を指す iindex_type。空の場合 npos。
+   //! @brief 構築済みリストの先頭（begin()）を指す iindex_type。空の場合
+   //! npos。
    iindex_type _next_constructed = static_cast<iindex_type>(self_type::npos);
    //! @brief 構築済みリストの末尾（rbegin()相当、逆順走査の起点）を指す
    //! iindex_type。
@@ -393,8 +397,8 @@ class basic_slot_map {
     * にコンテナサイズという
     *       範囲外の値が入ってしまうバグがあった。全スロット使用後に更に
     * checkout() を 呼び出すと `std::array`
-    * への境界外アクセス（未定義動作）が発生する不具合が あったため、末尾要素の
-    * next() を npos へ設定するよう修正済み。
+    * への境界外アクセス（未定義動作）が発生する不具合が
+    * あったため、末尾要素の next() を npos へ設定するよう修正済み。
     * @note 内部コンテナが可変長（例: `slot_map` の
     * `std::deque`）で初期サイズ0の場合は
     *       このフリーリスト初期化ループは実行されない（要素は
@@ -502,7 +506,8 @@ class basic_slot_map {
     * @throw std::out_of_range 内部コンテナが
     *           `push_back()`を持たず（固定長コンテナ等）、
     *           かつフリーリストが空でこれ以上拡張できない場合。
-    * @throw std::out_of_range インデックス空間がIndexTの表現範囲を超えた場合。
+    * @throw std::out_of_range
+    * インデックス空間がIndexTの表現範囲を超えた場合。
     * @note 返されたハンドルは construct_at() で値を構築するか、cancel() で
     *       フリーリストへ戻すまで、構築済みリストには一切リンクされない。
     */
@@ -848,7 +853,8 @@ class basic_slot_map {
    //          実装が整合するかは再検証・再設計が必要であり、使用は非推奨（8章参照）。
    //    constexpr void shrink(this self_type &self) {
    // #pragma unroll 2
-   //       for (auto index = iindex_type(self._container.size()); index != 0;)
+   //       for (auto index = iindex_type(self._container.size()); index !=
+   //       0;)
    //       {
    //          --index;
    //          if (self._container[index]) [[unlikely]] {
@@ -859,11 +865,13 @@ class basic_slot_map {
    //          if (index == self._next_constructed) [[unlikely]] {
    //             self._next_constructed = target.next();
    //          }
-   //          if (target.prev() != static_cast<iindex_type>(self_type::npos))
+   //          if (target.prev() !=
+   //          static_cast<iindex_type>(self_type::npos))
    //              [[likely]] {
    //             self._container[target.prev()].next() = target.next();
    //          }
-   //          if (target.next() != static_cast<iindex_type>(self_type::npos))
+   //          if (target.next() !=
+   //          static_cast<iindex_type>(self_type::npos))
    //              [[likely]] {
    //             self._container[target.next()].prev() = target.prev();
    //          }
@@ -926,7 +934,8 @@ class basic_slot_map {
 
 /**
  * @brief `index`
- * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if` 準拠）。
+ * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if`
+ * 準拠）。
  * @param slot_map 検索対象の basic_slot_map。
  * @param index 検索対象のハンドル。
  * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
@@ -944,7 +953,8 @@ auto get_if(
 
 /**
  * @brief `index`
- * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if` 準拠）。
+ * が指す要素へのポインタを、存在チェック付きで取得する（`std::get_if`
+ * 準拠）。
  * @param slot_map 検索対象の basic_slot_map。
  * @param index 検索対象のハンドル。
  * @return 要素が存在すればそのポインタ、存在しなければ nullptr。
@@ -960,13 +970,15 @@ auto get_if(
    return &slot_map[index];
 }
 
-//! @brief `basic_slot_map` の `MakeContainerT` 引数用ポリシー。内部コンテナに
+//! @brief `basic_slot_map` の `MakeContainerT`
+//! 引数用ポリシー。内部コンテナに
 //!        `std::deque<node_type>`（可変長）を選択する。既定の `slot_map`
 //!        エイリアスで使用。
 struct make_deque {
    template <class T> using type = typename std::deque<T>;
 };
-//! @brief `basic_slot_map` の `MakeContainerT` 引数用ポリシー。内部コンテナに
+//! @brief `basic_slot_map` の `MakeContainerT`
+//! 引数用ポリシー。内部コンテナに
 //!        `std::array<node_type,
 //!        SizeV>`（固定長）を選択する。`inplace_slot_map` エイリアスで使用。
 //! @tparam SizeV 固定長コンテナの要素数。
@@ -987,8 +999,9 @@ using inplace_slot_map = basic_slot_map<IndexT, T, make_array<SizeV>>;
 //------------------------------------------------------------------------------
 // NOTE(衛生改善): iterator/const_iterator の concept 充足検証。
 // data_source/reader/writer 等について
-// static_assert(concept_name<T>); 形式でのコンパイル時検証を方針としているが、
-// 従来 slot_map のイテレータにはこの種の検証が存在しなかった。
+// static_assert(concept_name<T>);
+// 形式でのコンパイル時検証を方針としているが、 従来 slot_map
+// のイテレータにはこの種の検証が存在しなかった。
 // 検証専用のダミー型（非export、slot_map_iterator_check_index）を用意し、
 // null_data_source（data_source.cppm）等と同様の「concept検証専用スタブ」
 // パターンに揃える。
