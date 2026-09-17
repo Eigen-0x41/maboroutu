@@ -117,6 +117,151 @@ template <class DependT, class T, class IIndex> class slot_map_node {
 //------------------------------------------------------------------------------
 
 /**
+ * @brief 構築済み要素のみを走査する双方向イテレータの実装本体。
+ *
+ * @details
+ * `slot_map_node`と対称的に、`basic_slot_map`本体とは別のトップレベル型として
+ *          実装する。`basic_slot_map`本体の帳簿情報へのアクセスは、`DependT`
+ *          （`basic_slot_map`本体）が公開する3つの狭いprivateアクセサ
+ *          （`_head_index()`/`_tail_index()`/`_node_at()`）経由に限定し、
+ *          `_container`等の内部フィールドへ直接アクセスしない。
+ *          （リファクタリング前は`basic_slot_map`内のネストクラスであり、
+ *          これら3点を含む内部フィールドへ直接アクセスしていた。）
+ *
+ * @tparam DependT 参照元の `basic_slot_map` 特殊化そのもの。
+ * @tparam IIndex
+ * 内部の帳簿管理用インデックス型（`basic_slot_map::iindex_type`）。
+ * @tparam T       格納する値の型。
+ * @tparam IsConst true の場合 const版（const_iterator）として振る舞う。
+ */
+// [[basic_slot_map_iterator]]
+template <class DependT, class IIndex, class T, bool IsConst>
+class basic_slot_map_iterator {
+ public: /*STRUCT_FIELD*/
+   using difference_type = std::ptrdiff_t;
+   // NOTE:
+   // gccでは同名のエイリアスを新たに定義する際に既存のエイリアスを使用できない。
+   // 本来はbasic_slot_mapのvalue_typeを利用する。
+   using value_type =
+       typename std::pair<typename DependT::index_type const,
+                          typename std::conditional_t<IsConst, T const, T> &>;
+   using iterator_concept = std::bidirectional_iterator_tag;
+
+   //! @brief `operator->()` が返す、`value_type`（`std::pair<index_type
+   //! const, T&>`）を
+   //!        保持するだけの一時プロキシ型。
+   class pointer {
+    private:
+      value_type _value;
+
+    public:
+      pointer(value_type value) : _value(value) {}
+      auto operator*() -> value_type & { return _value; }
+      auto operator->() -> value_type * { return &_value; }
+   };
+
+ protected:
+ private:
+   friend basic_slot_map_iterator<DependT, IIndex, T, !IsConst>;
+
+   using self_type = basic_slot_map_iterator;
+   using depend_type =
+       typename std::conditional_t<IsConst, DependT const, DependT>;
+
+   //! @brief `DependT`（`basic_slot_map`本体）に、begin()/end()経由での
+   //!        本クラスの private コンストラクタ呼び出しのみを許可する。
+   friend DependT;
+
+   depend_type *_data;
+   IIndex _idx_s;
+
+   /*--:  *IMPLIMENT_FIELD*/
+   explicit basic_slot_map_iterator(depend_type *data, IIndex idx_s)
+       : _data(data), _idx_s(idx_s) {}
+
+ protected:
+ public:
+   basic_slot_map_iterator() = default;
+   basic_slot_map_iterator(basic_slot_map_iterator const &) = default;
+   basic_slot_map_iterator(basic_slot_map_iterator &&) = default;
+   basic_slot_map_iterator(
+       basic_slot_map_iterator<DependT, IIndex, T, false> const &ite)
+      requires IsConst
+       : _data(ite._data), _idx_s(ite._idx_s) {}
+   ~basic_slot_map_iterator() = default;
+
+   //! @brief 前置インクリメント。次に構築済みの要素（なければ
+   //! end()）へ進む。
+   friend constexpr auto operator++(self_type &self) -> self_type & {
+      self._idx_s = (static_cast<IIndex>(depend_type::npos) != self._idx_s)
+                        ? self._data->_node_at(self._idx_s).next()
+                        : self._data->_head_index();
+      return self;
+   }
+   //! @brief 後置インクリメント。
+   friend constexpr auto operator++(self_type &self, int) -> self_type {
+      self_type ret_value = self;
+      ++self;
+      return ret_value;
+   }
+
+   //! @brief 前置デクリメント。1つ前に構築済みの要素へ戻る。
+   friend constexpr auto operator--(self_type &self) -> self_type & {
+      self._idx_s = (static_cast<IIndex>(depend_type::npos) != self._idx_s)
+                        ? self._data->_node_at(self._idx_s).prev()
+                        : self._data->_tail_index();
+      return self;
+   }
+   //! @brief 後置デクリメント。
+   friend constexpr auto operator--(self_type &self, int) -> self_type {
+      self_type ret_value = self;
+      --self;
+      return ret_value;
+   }
+
+   //! @brief 間接参照。`(index_type const, value_type&)` のペアを返す。
+   //! @pre 現在位置が構築済みの要素を指していること（未構築の場合 assert）。
+   friend constexpr auto operator*(self_type const &self) -> value_type {
+      auto &data = self._data->_node_at(self._idx_s);
+      assert(data.has_value());
+      return std::make_pair(
+          static_cast<typename DependT::index_type>(self._idx_s),
+          std::ref(data.value()));
+   }
+
+   //! @brief アロー演算子。`*self` を保持する一時 `pointer` プロキシを返す。
+   constexpr auto operator->(this self_type const &self) -> pointer {
+      return {*self};
+   }
+
+   //! @brief
+   //! 等価比較。参照元コンテナと現在位置（インデックス）がともに一致する場合に
+   //! true。
+   template <bool RConst>
+   friend constexpr auto
+   operator==(self_type const &lhs,
+              basic_slot_map_iterator<DependT, IIndex, T, RConst> const &rhs)
+       -> bool {
+      return (lhs._data == rhs._data) && (lhs._idx_s == rhs._idx_s);
+   }
+
+   auto operator=(basic_slot_map_iterator const &rhs)
+       -> basic_slot_map_iterator & = default;
+   auto operator=(basic_slot_map_iterator &&rhs)
+       -> basic_slot_map_iterator & = default;
+   auto operator=(basic_slot_map_iterator<DependT, IIndex, T, false> const &ite)
+       -> basic_slot_map_iterator &
+      requires IsConst
+   {
+      _data = ite._data;
+      _idx_s = ite._idx_s;
+      return *this;
+   }
+};
+
+//------------------------------------------------------------------------------
+
+/**
  * @brief slot_map base
  * enumを使用することでindexに数値が混入することを防いでいます
  * 要素数がIndexTの最大値-1以上となる場合の動作は未定義です。
@@ -172,6 +317,9 @@ class basic_slot_map {
  private:
    //! @brief 自身の型（deducing this 用の略記）。
    using self_type = basic_slot_map;
+   //! @brief `basic_slot_map_iterator`の
+   //         privateアクセサへのアクセス許可。
+   template <class, class, class, bool> friend class basic_slot_map_iterator;
 
    //! @brief 内部の帳簿管理（prev/nextリンク・番兵値比較）専用のインデックス型
    //!        （=
@@ -184,129 +332,6 @@ class basic_slot_map {
    //! @brief `MakeContainerT` により選択される、`node_type`
    //! を格納する実コンテナ型。
    using container_type = MakeContainerT::template type<node_type>;
-
-   /**
-    * @brief 構築済み要素のみを走査する双方向イテレータの実装本体。
-    * @tparam IsConst true の場合 const版（const_iterator）として振る舞う。
-    */
-   template <bool IsConst>
-   // [[basic_iterator]]
-   class basic_iterator {
-    public: /*STRUCT_FIELD*/
-      using difference_type = std::ptrdiff_t;
-      // NOTE:
-      // gccでは同名のエイリアスを新たに定義する際に既存のエイリアスを使用できない。
-      // 本来はbasic_slot_mapのvalue_typeを利用する。
-      using value_type = typename std::pair<
-          index_type const, typename std::conditional_t<IsConst, T const, T> &>;
-      using iterator_concept = std::bidirectional_iterator_tag;
-
-      //! @brief `operator->()` が返す、`value_type`（`std::pair<index_type
-      //! const, T&>`）を
-      //!        保持するだけの一時プロキシ型。
-      class pointer {
-       private:
-         value_type _value;
-
-       public:
-         pointer(value_type value) : _value(value) {}
-         auto operator*() -> value_type & { return _value; }
-         auto operator->() -> value_type * { return &_value; }
-      };
-
-    protected:
-    private:
-      friend basic_iterator<!IsConst>;
-
-      using self_type = basic_iterator;
-      using depend_type =
-          typename std::conditional_t<IsConst, basic_slot_map const,
-                                      basic_slot_map>;
-
-      friend basic_slot_map;
-
-      depend_type *_data;
-      iindex_type _idx_s;
-
-      /*--:  *IMPLIMENT_FIELD*/
-      explicit basic_iterator(depend_type *data, iindex_type idx_s)
-          : _data(data), _idx_s(idx_s) {}
-
-    protected:
-    public:
-      basic_iterator() = default;
-      basic_iterator(basic_iterator const &) = default;
-      basic_iterator(basic_iterator &&) = default;
-      basic_iterator(basic_iterator<false> const &ite)
-         requires IsConst
-          : _data(ite._data), _idx_s(ite._idx_s) {}
-      ~basic_iterator() = default;
-
-      //! @brief 前置インクリメント。次に構築済みの要素（なければ
-      //! end()）へ進む。
-      friend constexpr auto operator++(self_type &self) -> self_type & {
-         self._idx_s =
-             (static_cast<iindex_type>(depend_type::npos) != self._idx_s)
-                 ? self._data->_container[self._idx_s].next()
-                 : self._data->_next_constructed;
-         return self;
-      }
-      //! @brief 後置インクリメント。
-      friend constexpr auto operator++(self_type &self, int) -> self_type {
-         self_type ret_value = self;
-         ++self;
-         return ret_value;
-      }
-
-      //! @brief 前置デクリメント。1つ前に構築済みの要素へ戻る。
-      friend constexpr auto operator--(self_type &self) -> self_type & {
-         self._idx_s =
-             (static_cast<iindex_type>(depend_type::npos) != self._idx_s)
-                 ? self._data->_container[self._idx_s].prev()
-                 : self._data->_rnext_constructed;
-         return self;
-      }
-      //! @brief 後置デクリメント。
-      friend constexpr auto operator--(self_type &self, int) -> self_type {
-         self_type ret_value = self;
-         --self;
-         return ret_value;
-      }
-
-      //! @brief 間接参照。`(index_type const, value_type&)` のペアを返す。
-      //! @pre 現在位置が構築済みの要素を指していること（未構築の場合 assert）。
-      friend constexpr auto operator*(self_type const &self) -> value_type {
-         auto &data = self._data->_container[self._idx_s];
-         assert(data.has_value());
-         return std::make_pair(static_cast<index_type>(self._idx_s),
-                               std::ref(data.value()));
-      }
-
-      //! @brief アロー演算子。`*self` を保持する一時 `pointer` プロキシを返す。
-      constexpr auto operator->(this self_type const &self) -> pointer {
-         return {*self};
-      }
-
-      //! @brief
-      //! 等価比較。参照元コンテナと現在位置（インデックス）がともに一致する場合に
-      //! true。
-      template <bool RConst>
-      friend constexpr auto operator==(self_type const &lhs,
-                                       basic_iterator<RConst> const &rhs)
-          -> bool {
-         return (lhs._data == rhs._data) && (lhs._idx_s == rhs._idx_s);
-      }
-
-      auto operator=(basic_iterator const &rhs) -> basic_iterator & = default;
-      auto operator=(basic_iterator &&rhs) -> basic_iterator & = default;
-      auto operator=(basic_iterator<false> const &ite) -> basic_iterator &
-         requires IsConst
-      {
-         _data = ite._data;
-         _idx_s = ite._idx_s;
-         return *this;
-      }
-   };
 
    //! @brief ノード実体を保持する内部コンテナ本体。
    container_type _container{};
@@ -329,14 +354,33 @@ class basic_slot_map {
       return key == static_cast<iindex_type>(self_type::npos);
    }
 
+   //! @brief イテレータ用アクセサ:
+   //! 構築済みリストの先頭（begin()相当）を指す内部インデックスを返す。
+   [[nodiscard]] auto _head_index(this self_type const &self) noexcept
+       -> iindex_type {
+      return self._next_constructed;
+   }
+   //! @brief イテレータ用アクセサ:
+   //! 構築済みリストの末尾（rbegin()相当）を指す内部インデックスを返す。
+   [[nodiscard]] auto _tail_index(this self_type const &self) noexcept
+       -> iindex_type {
+      return self._rnext_constructed;
+   }
+   //! @brief イテレータ用アクセサ: 指定インデックスのノードへの参照を返す。
+   template <class Self>
+   auto _node_at(this Self &self, iindex_type idx) noexcept
+       -> std::conditional_t<std::is_const_v<Self>, node_type const, node_type>
+           & {
+      return self._container[idx];
+   }
+
  protected:
  public:
    //! @brief 構築済み要素を走査する、書き込み可能な双方向イテレータ。
-   using iterator = basic_iterator<false>;
-   friend iterator;
+   using iterator = basic_slot_map_iterator<self_type, iindex_type, T, false>;
    //! @brief 構築済み要素を走査する、読み取り専用の双方向イテレータ。
-   using const_iterator = basic_iterator<true>;
-   friend const_iterator;
+   using const_iterator =
+       basic_slot_map_iterator<self_type, iindex_type, T, true>;
 
    /**
     * @brief デフォルトコンストラクタ。
@@ -345,13 +389,12 @@ class basic_slot_map {
     *          全スロットを未構築状態のままフリーリストへ連結する。先頭要素の
     * prev()、 末尾要素の next() は、いずれも
     * npos（フリーリストの終端）として明示的に 設定される。
-    * @note （v1.16で修正）以前の実装では末尾要素の next()
+    * @note 以前の実装では末尾要素の next()
     * にコンテナサイズという
     *       範囲外の値が入ってしまうバグがあった。全スロット使用後に更に
     * checkout() を 呼び出すと `std::array`
     * への境界外アクセス（未定義動作）が発生する不具合が あったため、末尾要素の
-    * next() を npos へ設定するよう修正済み（library_spec_v1_16.md
-    *       4.6節・変更履歴v1.16参照）。
+    * next() を npos へ設定するよう修正済み。
     * @note 内部コンテナが可変長（例: `slot_map` の
     * `std::deque`）で初期サイズ0の場合は
     *       このフリーリスト初期化ループは実行されない（要素は
@@ -940,5 +983,21 @@ using slot_map = basic_slot_map<IndexT, T, make_deque>;
 //! @tparam SizeV 固定長コンテナの要素数（＝格納可能な最大要素数）。
 export template <class IndexT, class T, size_t SizeV>
 using inplace_slot_map = basic_slot_map<IndexT, T, make_array<SizeV>>;
+
+//------------------------------------------------------------------------------
+// NOTE(衛生改善): iterator/const_iterator の concept 充足検証。
+// data_source/reader/writer 等について
+// static_assert(concept_name<T>); 形式でのコンパイル時検証を方針としているが、
+// 従来 slot_map のイテレータにはこの種の検証が存在しなかった。
+// 検証専用のダミー型（非export、slot_map_iterator_check_index）を用意し、
+// null_data_source（data_source.cppm）等と同様の「concept検証専用スタブ」
+// パターンに揃える。
+enum class slot_map_iterator_check_index : std::size_t {};
+using slot_map_iterator_check = slot_map<slot_map_iterator_check_index, int>;
+
+static_assert(std::bidirectional_iterator<slot_map_iterator_check::iterator>,
+              "");
+static_assert(
+    std::bidirectional_iterator<slot_map_iterator_check::const_iterator>, "");
 
 } // namespace maboroutu
