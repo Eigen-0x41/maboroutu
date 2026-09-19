@@ -19,8 +19,6 @@ export import maboroutu.sequential_source;
 
 namespace maboroutu {
 
-export using endian = std::endian;
-
 export template <class T>
 concept numberable =
     std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_enum_v<T>;

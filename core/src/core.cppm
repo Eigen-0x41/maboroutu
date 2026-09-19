@@ -16,6 +16,8 @@ static_assert(_MSC_VER >= 1944,
 #endif
 
 namespace maboroutu {
+export using endian = std::endian;
+
 export template <typename T> struct basic_region {
    T offset;
    T size;
@@ -68,7 +70,7 @@ struct in_place_tag {
 export template <auto EnumV>
 constexpr auto in_place_tag_v = in_place_tag<decltype(EnumV), EnumV>();
 
-export template <std::endian EndianV>
-using endian_in_place_tag = in_place_tag<std::endian, EndianV>;
+export template <endian EndianV>
+using endian_in_place_tag = in_place_tag<endian, EndianV>;
 
 } // namespace maboroutu
