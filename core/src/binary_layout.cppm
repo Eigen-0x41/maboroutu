@@ -203,19 +203,4 @@ export template <std::size_t Bytes, endian Endian, data_buffer Buffer>
    return position_patch<Bytes, Endian, Buffer>{buf, grown->offset};
 }
 
-// data_source由来のエラーを data_buffer のエラードメインへ変換する
-// （sequential_view.cppm の convert_from_data_source_result_error_type
-//   と同種の、モジュール間エラー変換）。
-template <class ResultT>
-[[nodiscard]] auto
-_convert_source_error_to_buffer_error(ResultT const &result) {
-   auto const code = result.error().code();
-   using source_code_type = decltype(code);
-   using buffer_code_type = data_buffer_result<void>::error_type::code_type;
-   if (code == source_code_type::out_of_range) {
-      return make_unexpected(buffer_code_type::out_of_range);
-   }
-   return make_unexpected(buffer_code_type::operation_failure);
-}
-
 } // namespace maboroutu
