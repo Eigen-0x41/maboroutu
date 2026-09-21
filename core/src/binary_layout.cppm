@@ -99,59 +99,54 @@ export template <std::size_t Bytes, endian Endian, writable_data_source Src>
 }
 
 /**
- * @brief テーブル引き参照（index_ref）。TableTag により、異なるテーブルの
- *        添字同士を型で区別する。参照先はテーブルの要素数が確定すれば
- *        解決可能であり、レイアウト全体の確定（バックパッチ）を待たない
- *        （application_spec.md 検討時の分類 (a)/(A) に相当）。
- */
-export template <class TableTag> struct index_ref {
-   std::size_t index;
-};
-
-/**
  * @brief data_buffer 上に予約したプレースホルダを、後から確定値で上書き
  *        （パッチ）するためのRAIIハンドル。
  *
+ * @note バイトオフセットへの参照・テーブルインデックスへの参照のいずれ
+ *       にも使える（値の意味は呼び出し側が決める。application_spec.md
+ *       検討時の分類 (b)/(c) 双方の下位機構として共用する）。
  * @note スコープを抜けるまでに resolve()（または明示的に abandon()）を
  *       呼ばなければ、デストラクタで assert により検出する（呼び忘れは
  *       バグとして扱う。7章 (b) スコープ完結型パッチの設計）。
  * @note コピー不可・ムーブのみ。二重解決を防ぐため、ムーブ元は
  *       「解決済み」扱いに遷移する。
+ * @note 予約領域のサイズは常に Bytes（テンプレート引数）と一致するため、
+ *       region ではなく std::size_t（先頭位置のみ）を保持する。
  */
 export template <std::size_t Bytes, endian Endian, data_buffer Buffer>
-// [[offset_patch]]
-class offset_patch {
+// [[position_patch]]
+class position_patch {
  public: /*STRUCT_FIELD*/
    using storage_type = uint_storage_t<Bytes>;
 
  protected:
  private:
-   using self_type = offset_patch;
+   using self_type = position_patch;
 
    Buffer *_buf = nullptr;
-   region _placeholder{};
+   std::size_t _position = 0;
    bool _resolved = false;
 
    /*--:  *IMPLIMENT_FIELD*/
  protected:
  public:
-   offset_patch() = delete;
-   offset_patch(offset_patch const &) = delete;
-   offset_patch(offset_patch &&other) noexcept
-       : _buf(other._buf), _placeholder(other._placeholder),
+   position_patch() = delete;
+   position_patch(position_patch const &) = delete;
+   position_patch(position_patch &&other) noexcept
+       : _buf(other._buf), _position(other._position),
          _resolved(other._resolved) {
       other._buf = nullptr;
       other._resolved = true;
    }
-   offset_patch(Buffer &buf, region placeholder) noexcept
-       : _buf(&buf), _placeholder(placeholder) {}
-   ~offset_patch() {
+   position_patch(Buffer &buf, std::size_t position) noexcept
+       : _buf(&buf), _position(position) {}
+   ~position_patch() {
       assert(_resolved &&
-             "offset_patch が resolve()/abandon() されずに破棄されました");
+             "position_patch が resolve()/abandon() されずに破棄されました");
    }
 
-   [[nodiscard]] auto placeholder(this self_type const &self) -> region {
-      return self._placeholder;
+   [[nodiscard]] auto position(this self_type const &self) -> std::size_t {
+      return self._position;
    }
 
    [[nodiscard]] auto resolved(this self_type const &self) -> bool {
@@ -164,10 +159,10 @@ class offset_patch {
     */
    auto resolve(this self_type &self, storage_type value)
        -> data_source_result<void> {
-      assert(!self._resolved && "offset_patch が二重に解決されました");
+      assert(!self._resolved && "position_patch が二重に解決されました");
       assert(self._buf != nullptr);
-      auto result = write_uint<Bytes, Endian>(*self._buf,
-                                              self._placeholder.offset, value);
+      auto result =
+          write_uint<Bytes, Endian>(*self._buf, self._position, value);
       self._resolved = true;
       return result;
    }
@@ -179,14 +174,14 @@ class offset_patch {
     */
    auto abandon(this self_type &self) -> void { self._resolved = true; }
 
-   auto operator=(offset_patch const &other) -> offset_patch & = default;
-   auto operator=(offset_patch &&other) noexcept -> offset_patch & {
+   auto operator=(position_patch const &other) -> position_patch & = default;
+   auto operator=(position_patch &&other) noexcept -> position_patch & {
       if (this == &other) {
          return *this;
       }
-      assert(_resolved && "未解決の offset_patch が上書きされました");
+      assert(_resolved && "未解決の position_patch が上書きされました");
       _buf = other._buf;
-      _placeholder = other._placeholder;
+      _position = other._position;
       _resolved = other._resolved;
       other._buf = nullptr;
       other._resolved = true;
@@ -196,16 +191,16 @@ class offset_patch {
 
 /**
  * @brief data_buffer の末尾に Bytes バイト分のプレースホルダ（0埋め）を
- *        予約し、offset_patch を返す。
+ *        予約し、position_patch を返す。
  */
 export template <std::size_t Bytes, endian Endian, data_buffer Buffer>
 [[nodiscard]] auto reserve_patch(Buffer &buf)
-    -> data_buffer_result<offset_patch<Bytes, Endian, Buffer>> {
+    -> data_buffer_result<position_patch<Bytes, Endian, Buffer>> {
    auto grown = buf.grow(Bytes);
    if (!grown) [[unlikely]] {
       return std::unexpected(std::move(grown).error());
    }
-   return offset_patch<Bytes, Endian, Buffer>{buf, *grown};
+   return position_patch<Bytes, Endian, Buffer>{buf, grown->offset};
 }
 
 // data_source由来のエラーを data_buffer のエラードメインへ変換する
@@ -227,7 +222,8 @@ _convert_source_error_to_buffer_error(ResultT const &result) {
  * @brief TLV(Tag-Length-Value)レコード1つを読み取った結果。
  *
  * @note リストの終端判定（親の長さで区切る／センチネルで区切る／タグに
- *       埋め込まれたフラグビットで区切る等、フォーマットごとに異なる。）
+ *       埋め込まれたフラグビットで区切る等、フォーマットごとに異なる。
+ *       ZIP拡張フィールド・glTF/.glbチャンク・FBX・FLACの比較で確認済み）
  *       は本関数の責務外とする。呼び出し側が record から次のオフセット
  *       （record.offset + record.size）を計算し、判定ポリシーを適用する。
  */
