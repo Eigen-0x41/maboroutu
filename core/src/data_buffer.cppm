@@ -6,6 +6,7 @@ module;
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <type_traits>
@@ -276,6 +277,13 @@ using segmented_span_check = segmented_span<int, 1024>;
 static_assert(std::random_access_iterator<segmented_span_check::iterator>, "");
 static_assert(std::random_access_iterator<segmented_span_check::const_iterator>,
               "");
+static_assert(std::ranges::random_access_range<segmented_span<std::byte, 4096>>,
+              "segmented_span<std::byte, N> は data_buffer::view_type の制約"
+              "（random_access_range）を満たす必要がある");
+static_assert(
+    std::same_as<std::ranges::range_value_t<segmented_span<std::byte, 4096>>,
+                 std::byte>,
+    "");
 
 namespace errc {
 enum class data_buffer {
@@ -290,16 +298,20 @@ using data_buffer_result = result<T, errc::data_buffer>;
 export template <class T>
 concept data_buffer =
     writable_data_source<T> &&
+    std::ranges::random_access_range<typename T::view_type> &&
+    std::same_as<std::ranges::range_value_t<typename T::view_type>,
+                 std::byte> &&
     requires(T &buf, std::size_t n, region r, std::span<std::byte const> data) {
        { buf.append(data) } -> std::same_as<data_buffer_result<region>>;
        { buf.grow(n) } -> std::same_as<data_buffer_result<region>>;
        {
           buf.view(r)
-       } -> std::same_as<data_buffer_result<std::span<std::byte>>>;
+       } -> std::same_as<data_buffer_result<typename T::view_type>>;
     };
 
 // NOTE: concept検証兼 posix /dev/null の模倣
 export struct null_data_buffer {
+   using view_type = std::span<std::byte>;
    template <class T> using result_type = data_source_result<T>;
 
    [[nodiscard]] static auto size() -> result_type<std::size_t> { return 0; }
@@ -327,7 +339,7 @@ export struct null_data_buffer {
           .size = 0,
       };
    }
-   static auto view(region r) -> data_buffer_result<std::span<std::byte>> {
+   static auto view(region r) -> data_buffer_result<view_type> {
       return make_unexpected(
           data_buffer_result<void>::error_type::code_type::out_of_range);
    }
