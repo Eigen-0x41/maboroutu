@@ -16,6 +16,7 @@ namespace errc {
 enum class data_source {
    out_of_range,
    invalid_member_variable,
+   invalid_operation,
    operation_failure,
 };
 } // namespace errc

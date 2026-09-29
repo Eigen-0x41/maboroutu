@@ -19,8 +19,7 @@ import maboroutu.data_source;
 namespace maboroutu {
 
 // [[segmented_span_iterator]]
-export template <class DependT, class T, bool IsConst>
-class segmented_span_iterator {
+template <class DependT, class T, bool IsConst> class segmented_span_iterator {
  public:
    using iterator_concept = std::random_access_iterator_tag;
    using difference_type = std::ptrdiff_t;
@@ -173,21 +172,28 @@ class segmented_span_iterator {
    }
 };
 
-export template <class T, std::size_t UnitSize>
+export template <template <class> class ContainerT, class T,
+                 std::size_t UnitSize>
    requires(std::has_single_bit(UnitSize))
-// [[segmented_span]]
-class segmented_span {
+// [[basic_segmented_span]]
+class basic_segmented_span {
  public: /*STRUCT_FIELD*/
-   using value_type = T;
+   using value_type = std::remove_cvref_t<T>;
    using size_type = std::size_t;
 
  protected:
  private:
-   using self_type = segmented_span;
+   using self_type = basic_segmented_span;
+   using container_type = ContainerT<std::conditional_t<
+       std::is_const_v<T>, typename std::span<value_type, UnitSize> const,
+       typename std::span<value_type, UnitSize>>>;
    template <class, class, bool> friend class segmented_span_iterator;
 
-   std::span<std::span<value_type, UnitSize>> _container{};
-   size_type _size = 0;
+   static_assert(std::ranges::contiguous_range<container_type>, "");
+   static_assert(std::ranges::sized_range<container_type>, "");
+
+   container_type _container{};
+   region _region{};
 
    /*--:  *IMPLIMENT_FIELD*/
  protected:
@@ -195,30 +201,33 @@ class segmented_span {
    using iterator = segmented_span_iterator<self_type, T, false>;
    using const_iterator = segmented_span_iterator<self_type, T, true>;
 
-   segmented_span() = default;
-   segmented_span(segmented_span const &) = default;
-   segmented_span(segmented_span &&) = default;
-   segmented_span(std::span<std::span<value_type, UnitSize>> span,
-                  size_type size)
-       : _container(span), _size(size) {
+   basic_segmented_span() = default;
+   basic_segmented_span(basic_segmented_span const &) = default;
+   basic_segmented_span(basic_segmented_span &&) = default;
+   basic_segmented_span(container_type span, region reg)
+       : _container(std::move(span)), _region(reg) {
       // NOTE: 実行時にもthrowによる検証を行うが、
       //       本来はassertのみの制約でも良い。
       bool status =
           span.size() <=
               (std::numeric_limits<decltype(span.size())>::max() / UnitSize) &&
-          _size <= (span.size() * UnitSize);
+          (_region.offset + _region.size) <= (span.size() * UnitSize);
       assert(status && "out of range size than actual span size.");
       if (!status) {
          throw std::invalid_argument(
              "out of range size than actual span size.");
       }
    }
-   segmented_span(std::span<std::span<value_type, UnitSize>> span)
-       : _container(span), _size(UnitSize * span.size()) {}
-   ~segmented_span() = default;
+   basic_segmented_span(container_type span, size_type offset = 0)
+       : _container(std::move(span)),
+         _region({
+             .offset = 0,
+             .size = (UnitSize * span.size()) - offset,
+         }) {}
+   ~basic_segmented_span() = default;
 
-   [[nodiscard]] auto size() const -> size_type { return _size; }
-   [[nodiscard]] auto empty() const -> bool { return _size == 0; }
+   [[nodiscard]] auto size() const -> size_type { return _region.size; }
+   [[nodiscard]] auto empty() const -> bool { return _region.size == 0; }
 
    [[nodiscard]] auto segments() const
        -> std::span<std::span<value_type, UnitSize> const> {
@@ -229,8 +238,10 @@ class segmented_span {
    [[nodiscard]] auto at(this Self &self, size_type index)
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
-      if (index >= self._size) [[unlikely]] {
-         throw std::out_of_range("segmented_span::at: index out of range");
+      index += self._region.offset;
+      if (index >= self._region.size) [[unlikely]] {
+         throw std::out_of_range(
+             "basic_segmented_span::at: index out of range");
       }
       return self._container[index / UnitSize][index % UnitSize];
    }
@@ -238,8 +249,9 @@ class segmented_span {
    [[nodiscard]] auto operator[](this Self &self, size_type index)
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
-      assert((index < self._size) &&
-             "segmented_span::operator[]: index out of range");
+      index += self._region.offset;
+      assert((index < self._region.size) &&
+             "basic_segmented_span::operator[]: index out of range");
       return self._container[index / UnitSize][index % UnitSize];
    }
 
@@ -260,26 +272,32 @@ class segmented_span {
    constexpr auto end(this Self &self) noexcept
        -> std::conditional_t<std::is_const_v<Self>, const_iterator, iterator> {
       if constexpr (std::is_const_v<Self>) {
-         return const_iterator(&self, self._size);
+         return const_iterator(&self, self._region.size);
       } else {
-         return iterator(&self, self._size);
+         return iterator(&self, self._region.size);
       }
    }
    constexpr auto cend(this self_type const &self) noexcept -> const_iterator {
-      return const_iterator(&self, self._size);
+      return const_iterator(&self, self._region.size);
    }
 
-   auto operator=(segmented_span const &rhs) -> segmented_span & = default;
-   auto operator=(segmented_span &&rhs) -> segmented_span & = default;
+   auto operator=(basic_segmented_span const &rhs)
+       -> basic_segmented_span & = default;
+   auto operator=(basic_segmented_span &&rhs)
+       -> basic_segmented_span & = default;
 };
+
+export template <class T, std::size_t UnitSize>
+using segmented_span = basic_segmented_span<std::span, T, UnitSize>;
 
 using segmented_span_check = segmented_span<int, 1024>;
 static_assert(std::random_access_iterator<segmented_span_check::iterator>, "");
 static_assert(std::random_access_iterator<segmented_span_check::const_iterator>,
               "");
-static_assert(std::ranges::random_access_range<segmented_span<std::byte, 4096>>,
-              "segmented_span<std::byte, N> は data_buffer::view_type の制約"
-              "（random_access_range）を満たす必要がある");
+static_assert(
+    std::ranges::random_access_range<segmented_span<std::byte, 4096>>,
+    "basic_segmented_span<std::byte, N> は data_buffer::view_type の制約"
+    "（random_access_range）を満たす必要がある");
 static_assert(
     std::same_as<std::ranges::range_value_t<segmented_span<std::byte, 4096>>,
                  std::byte>,
@@ -289,6 +307,7 @@ namespace errc {
 enum class data_buffer {
    out_of_range,
    operation_failure,
+   invalid_operation,
 };
 }
 
@@ -321,7 +340,7 @@ export struct null_data_buffer {
           .size = r.size,
       };
    }
-   [[nodiscard]] auto write(region, std::span<std::byte const>)
+   [[nodiscard]] static auto write(region, std::span<std::byte const>)
        -> result_type<void> {
       return {};
    }
