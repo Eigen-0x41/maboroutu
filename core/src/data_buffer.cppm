@@ -323,10 +323,13 @@ using data_buffer_result = result<T, errc::data_buffer>;
 export template <class T>
 concept data_buffer =
     writable_data_source<T> &&
-    std::ranges::random_access_range<typename T::view_type> &&
-    std::same_as<std::ranges::range_value_t<typename T::view_type>,
-                 std::byte> &&
     requires(T &buf, std::size_t n, region r, std::span<std::byte const> data) {
+       typename T::view_type;
+
+       requires std::ranges::random_access_range<typename T::view_type>;
+       requires std::same_as<std::ranges::range_value_t<typename T::view_type>,
+                             std::byte>;
+
        { buf.append(data) } -> std::same_as<data_buffer_result<region>>;
        { buf.grow(n) } -> std::same_as<data_buffer_result<region>>;
        {
