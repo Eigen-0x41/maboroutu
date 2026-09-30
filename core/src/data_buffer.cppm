@@ -172,7 +172,7 @@ template <class DependT, class T, bool IsConst> class segmented_span_iterator {
    }
 };
 
-export template <template <class> class ContainerT, class T,
+export template <template <class...> class ContainerT, class T,
                  std::size_t UnitSize>
    requires(std::has_single_bit(UnitSize))
 // [[basic_segmented_span]]
@@ -287,8 +287,10 @@ class basic_segmented_span {
        -> basic_segmented_span & = default;
 };
 
+template <class T> using span = std::span<T, std::dynamic_extent>;
+
 export template <class T, std::size_t UnitSize>
-using segmented_span = basic_segmented_span<std::span, T, UnitSize>;
+using segmented_span = basic_segmented_span<span, T, UnitSize>;
 
 using segmented_span_check = segmented_span<int, 1024>;
 static_assert(std::random_access_iterator<segmented_span_check::iterator>, "");
