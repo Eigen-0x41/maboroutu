@@ -17,6 +17,10 @@ import maboroutu.core;
 import maboroutu.error;
 import maboroutu.data_source;
 
+#if !defined(__cpp_lib_hardware_interference_size)
+constexpr std::size_t hardware_destructive_interference_size = 64;
+#endif
+
 namespace maboroutu {
 
 template <class T>
