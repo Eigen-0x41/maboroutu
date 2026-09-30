@@ -18,8 +18,10 @@ export class command_hander {
 
    using key_type = std::string_view const;
    struct mapped_type {
-      using arg_type = arg_type;
-      using args_type = args_type;
+      // NOTE: command_handler::arg_type
+      using arg_type = std::string_view const;
+      // NOTE: command_handler::args_type
+      using args_type = std::span<arg_type>;
 
       std::function<int(command_hander &, args_type)> function;
       char const *description;
