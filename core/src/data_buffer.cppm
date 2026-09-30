@@ -30,6 +30,8 @@ template <class DependT, class T, bool IsConst> class segmented_span_iterator {
 
  protected:
  private:
+   friend segmented_span_iterator<DependT, T, !IsConst>;
+
    using self_type = segmented_span_iterator;
    using dependency_type = DependT;
    using size_type = std::remove_cvref_t<typename DependT::size_type>;
