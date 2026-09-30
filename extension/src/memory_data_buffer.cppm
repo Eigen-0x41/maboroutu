@@ -17,16 +17,11 @@ import maboroutu.core;
 import maboroutu.error;
 import maboroutu.data_source;
 
-#if !defined(__cpp_lib_hardware_interference_size)
-constexpr std::size_t hardware_destructive_interference_size = 64;
-#endif
-
 namespace maboroutu {
 
 template <class T>
 constexpr std::size_t table_block_size =
-    std::lcm(sizeof(T), std::hardware_destructive_interference_size) /
-    sizeof(T);
+    std::lcm(sizeof(T), recommended_alignment) / sizeof(T);
 
 // [[memory_data_buffer]]
 /**

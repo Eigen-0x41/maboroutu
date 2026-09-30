@@ -18,6 +18,14 @@ static_assert(_MSC_VER >= 1944,
 namespace maboroutu {
 export using endian = std::endian;
 
+export constexpr std::size_t recommended_alignment =
+#if defined(__cpp_lib_hardware_interference_size)
+    std::hardware_destructive_interference_size
+#else
+    64
+#endif
+    ;
+
 export template <typename T> struct basic_region {
    T offset;
    T size;
