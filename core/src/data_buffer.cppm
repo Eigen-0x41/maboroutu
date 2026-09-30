@@ -13,8 +13,7 @@ module;
 export module maboroutu.data_buffer;
 export import maboroutu.core;
 export import maboroutu.error;
-
-import maboroutu.data_source;
+export import maboroutu.data_source;
 
 namespace maboroutu {
 

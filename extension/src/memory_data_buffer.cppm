@@ -6,7 +6,6 @@ module;
 #include <cstddef>
 #include <forward_list>
 #include <memory>
-#include <new>
 #include <numeric>
 #include <span>
 #include <tuple>
@@ -15,7 +14,6 @@ export module maboroutu.memory_data_buffer;
 export import maboroutu.data_buffer;
 import maboroutu.core;
 import maboroutu.error;
-import maboroutu.data_source;
 
 namespace maboroutu {
 
