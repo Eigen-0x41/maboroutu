@@ -298,6 +298,8 @@ using segmented_span_check = segmented_span<int, 1024>;
 static_assert(std::random_access_iterator<segmented_span_check::iterator>, "");
 static_assert(std::random_access_iterator<segmented_span_check::const_iterator>,
               "");
+static_assert(std::ranges::random_access_range<segmented_span_check>, "");
+
 static_assert(
     std::ranges::random_access_range<segmented_span<std::byte, 4096>>,
     "basic_segmented_span<std::byte, N> は data_buffer::view_type の制約"
