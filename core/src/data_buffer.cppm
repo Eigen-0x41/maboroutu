@@ -240,20 +240,20 @@ class basic_segmented_span {
    [[nodiscard]] auto at(this Self &self, size_type index)
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
-      index += self._region.offset;
       if (index >= self._region.size) [[unlikely]] {
          throw std::out_of_range(
              "basic_segmented_span::at: index out of range");
       }
+      index += self._region.offset;
       return self._container[index / UnitSize][index % UnitSize];
    }
    template <class Self>
    [[nodiscard]] auto operator[](this Self &self, size_type index)
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
-      index += self._region.offset;
       assert((index < self._region.size) &&
              "basic_segmented_span::operator[]: index out of range");
+      index += self._region.offset;
       return self._container[index / UnitSize][index % UnitSize];
    }
 
