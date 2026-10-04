@@ -215,7 +215,7 @@ class basic_segmented_span {
           (_region.offset + _region.size) <= (span.size() * UnitSize);
       assert(status && "out of range size than actual span size.");
       if (!status) {
-         throw std::invalid_argument(
+         enter_fatal<std::invalid_argument>(
              "out of range size than actual span size.");
       }
    }
@@ -240,7 +240,7 @@ class basic_segmented_span {
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
       if (index >= self._region.size) [[unlikely]] {
-         throw std::out_of_range(
+         enter_fatal<std::out_of_range>(
              "basic_segmented_span::at: index out of range");
       }
       index += self._region.offset;

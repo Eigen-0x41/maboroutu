@@ -1,6 +1,8 @@
 module;
 #include <concepts>
 #include <cstddef>
+#include <cstdlib>
+#include <exception>
 #include <expected>
 #include <memory>
 #include <type_traits>
@@ -287,6 +289,7 @@ export template <class E, class... Args>
    throw E(std::forward<Args>(args)...);
 #else
    ((void)args, ...);
+   // NOTE: exception、cstdlib伴にfreestandingで利用可能であることを確認済み
 #if defined(MABOROUTU_FATAL_TO_TERMINATE)
    std::terminate(); // <exception>
 #else
