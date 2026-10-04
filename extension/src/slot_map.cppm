@@ -24,7 +24,6 @@ module;
 #include <utility>
 #include <variant>
 export module maboroutu.slot_map;
-import maboroutu.core;
 import maboroutu.error;
 
 // gccはパーティーションに対応していないようです。
