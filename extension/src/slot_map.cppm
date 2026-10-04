@@ -24,6 +24,9 @@ module;
 #include <utility>
 #include <variant>
 export module maboroutu.slot_map;
+import maboroutu.core;
+import maboroutu.error;
+
 // gccはパーティーションに対応していないようです。
 // ./slot_map/node.cppmよりslot_map_nodeを移植しています。
 // import :node;
@@ -463,7 +466,7 @@ class basic_slot_map {
        -> std::conditional_t<std::is_const_v<Self>, value_type const,
                              value_type> & {
       if (!self.contains(key)) [[unlikely]] {
-         throw std::out_of_range("not contain the specified key");
+         enter_fatal<std::out_of_range>("not contain the specified key");
       }
       return self._container[static_cast<iindex_type>(key)].value();
    }

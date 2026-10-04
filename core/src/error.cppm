@@ -281,6 +281,20 @@ export template <class Code, class Detail = std::monostate,
        std::in_place, code, std::forward<Args>(args)...);
 }
 
+export template <class E, class... Args>
+[[noreturn]] constexpr void enter_fatal(Args &&...args) {
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+   throw E(std::forward<Args>(args)...);
+#else
+   ((void)args, ...);
+#if defined(MABOROUTU_FATAL_TO_TERMINATE)
+   std::terminate(); // <exception>
+#else
+   std::abort(); // <cstdlib>
+#endif
+#endif
+}
+
 enum class maboroutu_test_enum {};
 using not_have_detail_type = error<maboroutu_test_enum>;
 static_assert(sizeof(not_have_detail_type) == sizeof(maboroutu_test_enum),
