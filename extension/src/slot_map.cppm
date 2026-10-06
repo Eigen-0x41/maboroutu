@@ -118,11 +118,6 @@ template <class DependT, class T, class IIndex> class slot_map_node {
 
 //------------------------------------------------------------------------------
 
-template <class T, class Link, class... Args>
-concept can_emplace_back = requires(T &self, Link &&link, Args &&...args) {
-   self.emplace_back(std::forward<Link>(link), std::forward<Args>(args)...);
-};
-
 /**
  * @brief 構築済み要素のみを走査する双方向イテレータの実装本体。
  *
@@ -267,6 +262,31 @@ class basic_slot_map_iterator {
 };
 
 //------------------------------------------------------------------------------
+// emplace() 用: コンテナが emplace_back() を持つかの判定。
+//
+// 本来は emplace() 内で、次のように requires を直接書く。
+//
+//    if constexpr (requires() {
+//                     self._container.emplace_back(
+//                         typename node_type::link{
+//                             .prev = static_cast<iindex_type>(
+//                                 self_type::npos),
+//                             .next = self._next_constructed,
+//                         },
+//                         std::forward<ArgsT>(args)...);
+//                  }) {
+//
+// MSVC 19.51 では、この式を本体で実際に呼び出すと有効であるにも
+// かかわらず requires が偽と評価されます。その結果 emplace() が常に
+// enter_fatal に到達してしまいます。原因は特定できていません。
+// Clang では直接記述でも真と評価されます。
+//
+// 回避策として、self や指示付き初期化に依存しない concept へ分離します。
+// コンパイラ側の修正を確認できた場合は直接記述へ戻して下さい。
+template <class T, class Link, class... Args>
+concept can_emplace_back = requires(T &self, Link &&link, Args &&...args) {
+   self.emplace_back(std::forward<Link>(link), std::forward<Args>(args)...);
+};
 
 /**
  * @brief slot_map base
@@ -771,6 +791,8 @@ class basic_slot_map {
          return static_cast<index_type>(construct_target);
       }
 
+      // 理想は requires の直接記述。MSVC の不具合回避のため
+      // concept を利用します。詳細は can_emplace_back を参照。
       if constexpr (can_emplace_back<container_type, typename node_type::link,
                                      ArgsT...>) {
          iindex_type construct_target(self._container.size());
