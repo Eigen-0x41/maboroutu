@@ -771,7 +771,7 @@ class basic_slot_map {
          return static_cast<index_type>(construct_target);
       }
 
-      if constexpr (can_emplace_back<self_type, typename node_type::link,
+      if constexpr (can_emplace_back<container_type, typename node_type::link,
                                      ArgsT...>) {
          iindex_type construct_target(self._container.size());
          if (construct_target == static_cast<iindex_type>(npos)) [[unlikely]] {
