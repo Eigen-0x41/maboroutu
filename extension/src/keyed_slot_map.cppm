@@ -111,31 +111,52 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
       }
    }
 
+   /**
+    * @brief keyを登録し、対応する要素を構築する。
+    * @note
+    * 例外が有効な場合のみ、次の失敗を戻り値へ変換して元の状態へ戻す。
+    * - keyの登録が例外を送出した場合: failed_to_add_key
+    * - 要素のコンストラクタが例外を送出した場合: failed_to_constructed
+    * 例外が無効な場合、これらの失敗は発生しない。
+    * 登録済みのkeyと重複した場合は、例外の有無にかかわらず
+    * failed_to_add_keyを返す。
+    */
    template <class Self, class LocKeyT, class... Args>
    auto routed_emplace(this Self &self, LocKeyT &&key, Args &&...args)
        -> result_type<void> {
       auto const index = self._data.checkout();
-      try {
-         auto ret_value =
-             self._domain.emplace(std::forward<LocKeyT>(key), index);
-         if (!ret_value.second) [[unlikely]] {
-            self._data.cancel(index);
-            return std::unexpected{
-                error_type(error_type::code_type::failed_to_add_key)};
-         }
-         try {
-            self._data.construct_at(index, std::forward<Args>(args)...);
-         } catch (...) {
-            self._domain.erase(ret_value.first);
-            return std::unexpected{
-                error_type(error_type::code_type::failed_to_constructed)};
-         }
-         return {};
-      } catch (...) {
+      std::pair<typename domain_type::iterator, bool> ret_value{};
+      auto registered = invoke_or_recover(
+          [&]() -> result_type<void> {
+             ret_value =
+                 self._domain.emplace(std::forward<LocKeyT>(key), index);
+             return {};
+          },
+          [&]() -> result_type<void> {
+             self._data.cancel(index);
+             return std::unexpected{
+                 error_type(error_type::code_type::failed_to_add_key)};
+          });
+      if (!registered) [[unlikely]] {
+         return registered;
+      }
+      if (!ret_value.second) [[unlikely]] {
          self._data.cancel(index);
          return std::unexpected{
              error_type(error_type::code_type::failed_to_add_key)};
       }
+      return invoke_or_recover(
+          [&]() -> result_type<void> {
+             self._data.construct_at(index, std::forward<Args>(args)...);
+             return {};
+          },
+          [&]() -> result_type<void> {
+             // construct_at()は例外送出時にコンテナの状態を変更しない。
+             self._domain.erase(ret_value.first);
+             self._data.cancel(index);
+             return std::unexpected{
+                 error_type(error_type::code_type::failed_to_constructed)};
+          });
    }
 
    /**

@@ -298,6 +298,32 @@ export template <class E, class... Args>
 #endif
 }
 
+/**
+ * @brief f を呼び出す。例外が有効な場合のみ、例外を捕捉して recover の
+ *        結果を返す。
+ * @note
+ * 例外が無効な場合は try / catch を使えないため、f をそのまま呼び出す。
+ * 例外の有無による分岐をこの関数に集約するための関数であり、
+ * f と recover の戻り値型は同一であること。
+ * recover が例外を送出した場合は、そのまま呼び出し元へ伝播する。
+ */
+export template <class F, class Recover>
+   requires std::is_same_v<std::invoke_result_t<F>,
+                           std::invoke_result_t<Recover>>
+constexpr auto invoke_or_recover(F &&f, Recover &&recover)
+    -> std::invoke_result_t<F> {
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+   try {
+      return std::forward<F>(f)();
+   } catch (...) {
+      return std::forward<Recover>(recover)();
+   }
+#else
+   static_cast<void>(recover);
+   return std::forward<F>(f)();
+#endif
+}
+
 enum class maboroutu_test_enum {};
 using not_have_detail_type = error<maboroutu_test_enum>;
 static_assert(sizeof(not_have_detail_type) == sizeof(maboroutu_test_enum),
