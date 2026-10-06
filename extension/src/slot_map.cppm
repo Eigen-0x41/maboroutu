@@ -118,6 +118,11 @@ template <class DependT, class T, class IIndex> class slot_map_node {
 
 //------------------------------------------------------------------------------
 
+template <class T, class Link, class... Args>
+concept can_emplace_back = requires(T &self, Link &&link, Args &&...args) {
+   self.emplace_back(std::forward<Link>(link), std::forward<Args>(args)...);
+};
+
 /**
  * @brief 構築済み要素のみを走査する双方向イテレータの実装本体。
  *
@@ -766,15 +771,8 @@ class basic_slot_map {
          return static_cast<index_type>(construct_target);
       }
 
-      if constexpr (requires() {
-                       self._container.emplace_back(
-                           typename node_type::link{
-                               .prev =
-                                   static_cast<iindex_type>(self_type::npos),
-                               .next = self._next_constructed,
-                           },
-                           std::forward<ArgsT>(args)...);
-                    }) {
+      if constexpr (can_emplace_back<self_type, typename node_type::link,
+                                     ArgsT...>) {
          iindex_type construct_target(self._container.size());
          if (construct_target == static_cast<iindex_type>(npos)) [[unlikely]] {
             enter_fatal<std::out_of_range>("slot_map index exhausted");
