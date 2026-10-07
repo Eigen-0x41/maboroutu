@@ -65,7 +65,7 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
        -> decltype(auto) {
       if (auto found = self._find(key); found != self._domain.end())
           [[likely]] {
-         return (found->second);
+         return found->second;
       }
       enter_fatal<std::out_of_range>("not contain the specified key");
    }
