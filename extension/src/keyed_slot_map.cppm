@@ -2,6 +2,7 @@ module;
 #include <cassert>
 #include <expected>
 #include <functional>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -11,7 +12,7 @@ import maboroutu.slot_map;
 
 namespace maboroutu {
 
-export namespace errc {
+namespace errc {
 enum class keyed_slot_map {
    failed_to_add_key,
    failed_to_constructed,
@@ -19,6 +20,9 @@ enum class keyed_slot_map {
    failed_to_domain_not_be_resolved,
 };
 }
+
+export template <class T>
+using keyed_slot_map_result = result<T, errc::keyed_slot_map>;
 
 // [[keyed_slot_map]]
 export template <class Key, class SlotMapT> class keyed_slot_map {
@@ -28,9 +32,6 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
    using mapped_type = std::remove_cvref_t<SlotMapT>;
    using domain_type =
        std::unordered_map<key_type, typename mapped_type::index_type>;
-
-   using error_type = error<errc::keyed_slot_map>;
-   template <class T> using result_type = std::expected<T, error_type>;
 
    static_assert(
        std::is_same_v<basic_slot_map<typename mapped_type::index_type,
@@ -43,18 +44,30 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
  private:
    using self_type = keyed_slot_map;
 
+   using errc_type = keyed_slot_map_result<void>::error_type::code_type;
+
    mapped_type &_data;
    domain_type _domain;
    /*--:  *IMPLIMENT_FIELD*/
    template <class Self, class LocKeyT>
-   [[nodiscard]] auto _at(this Self &self, LocKeyT const &key)
+   [[nodiscard]] auto _find(this Self &self, LocKeyT const &key)
        -> decltype(auto) {
       // ms系のstlへの回避策
-      if constexpr (requires { self._domain.at(key); }) {
-         return self._domain.at(key);
+      if constexpr (requires { self._domain.find(key); }) {
+         return self._domain.find(key);
       } else {
-         return self._domain.at(typename domain_type::key_type(key));
+         return self._domain.find(typename domain_type::key_type(key));
       }
+   }
+
+   template <class Self, class LocKeyT>
+   [[nodiscard]] auto _at(this Self &self, LocKeyT const &key)
+       -> decltype(auto) {
+      if (auto found = self._find(key); found != self._domain.end())
+          [[likely]] {
+         return (found->second);
+      }
+      enter_fatal<std::out_of_range>("not contain the specified key");
    }
 
  protected:
@@ -78,7 +91,8 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
     * @note
     * 前提: require_routed_existが成功値であること
     * keyが存在している場合、そのkeyに対応するindexより実体が取得できる。
-    * keyが存在していない場合はatが例外を送出する。
+    * keyが存在していない場合は致命的エラーとなる。例外が有効な場合は
+    * std::out_of_rangeを送出し、無効な場合はプログラムを終了する。
     */
    template <class Self, class LocKeyT>
    auto routed_at(this Self &self, LocKeyT const &key) -> decltype(auto) {
@@ -97,7 +111,8 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
     * @note
     * 非常に強力な動作を行えるため、使用は最小限に留めること。
     * keyが存在している場合、funcが実行される。
-    * keyが存在していない場合はatが例外を送出する。
+    * keyが存在していない場合は致命的エラーとなる。例外が有効な場合は
+    * std::out_of_rangeを送出し、無効な場合はプログラムを終了する。
     */
    template <class Self, class Func, class LocKeyT>
    auto routed_access(this Self &self, Func &&func, LocKeyT const &key)
@@ -123,39 +138,36 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
     */
    template <class Self, class LocKeyT, class... Args>
    auto routed_emplace(this Self &self, LocKeyT &&key, Args &&...args)
-       -> result_type<void> {
+       -> keyed_slot_map_result<void> {
       auto const index = self._data.checkout();
       std::pair<typename domain_type::iterator, bool> ret_value{};
       auto registered = invoke_or_recover(
-          [&]() -> result_type<void> {
+          [&]() -> keyed_slot_map_result<void> {
              ret_value =
                  self._domain.emplace(std::forward<LocKeyT>(key), index);
              return {};
           },
-          [&]() -> result_type<void> {
+          [&]() -> keyed_slot_map_result<void> {
              self._data.cancel(index);
-             return std::unexpected{
-                 error_type(error_type::code_type::failed_to_add_key)};
+             return make_unexpected(errc_type::failed_to_add_key);
           });
       if (!registered) [[unlikely]] {
          return registered;
       }
       if (!ret_value.second) [[unlikely]] {
          self._data.cancel(index);
-         return std::unexpected{
-             error_type(error_type::code_type::failed_to_add_key)};
+         return make_unexpected(errc_type::failed_to_add_key);
       }
       return invoke_or_recover(
-          [&]() -> result_type<void> {
+          [&]() -> keyed_slot_map_result<void> {
              self._data.construct_at(index, std::forward<Args>(args)...);
              return {};
           },
-          [&]() -> result_type<void> {
+          [&]() -> keyed_slot_map_result<void> {
              // construct_at()は例外送出時にコンテナの状態を変更しない。
              self._domain.erase(ret_value.first);
              self._data.cancel(index);
-             return std::unexpected{
-                 error_type(error_type::code_type::failed_to_constructed)};
+             return make_unexpected(errc_type::failed_to_constructed);
           });
    }
 
@@ -183,15 +195,13 @@ export template <class Key, class SlotMapT> class keyed_slot_map {
    template <class LocKeyT>
    [[nodiscard]] auto require_routed_exist(this self_type const &self,
                                            LocKeyT const &key)
-       -> result_type<void> {
+       -> keyed_slot_map_result<void> {
       auto const ite = self._domain.find(key);
       if (ite == self._domain.end()) [[unlikely]] {
-         return std::unexpected{
-             error_type(error_type::code_type::key_was_not_contain)};
+         return make_unexpected(errc_type::key_was_not_contain);
       }
       if (!self._data.contains(ite->second)) [[unlikely]] {
-         return std::unexpected{error_type(
-             error_type::code_type::failed_to_domain_not_be_resolved)};
+         return make_unexpected(errc_type::failed_to_domain_not_be_resolved);
       }
       return {};
    }

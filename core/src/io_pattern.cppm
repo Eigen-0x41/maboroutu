@@ -6,7 +6,7 @@ export import maboroutu.error;
 namespace maboroutu {
 
 // TODO: エラー値の選定
-export namespace errc {
+namespace errc {
 enum class io_pattern {};
 } // namespace errc
 
