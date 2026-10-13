@@ -1,12 +1,15 @@
 cmake_minimum_required(VERSION 3.28)
 
-option(CMAKE_EXPORT_COMPILE_COMMANDS "Export compile_commands.json." ON)
+# Toolchain and compile_commands.json are set only when built as the top level.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  option(CMAKE_EXPORT_COMPILE_COMMANDS "Export compile_commands.json." ON)
+endif()
 
 #option(ENABLE_FOO_TESTING "Enable tests" OFF)
 #if(ENABLE_FOO_TESTING)
 #  list(APPEND VCPKG_MANIFEST_FEATURES "FOO-testing")
 #endif()
-if(DEFINED ENV{VCPKG_ROOT})
+if(DEFINED ENV{VCPKG_ROOT} AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
     CACHE STRING "Use the vcpkg package manager")
 endif()
@@ -16,12 +19,10 @@ endif()
 #endif()
 
 set(PROJECT_COMPONENT core)
-if(WORKSPACE_NAME)
-    set(_PROJECT_NAME "${WORKSPACE_NAME}_${PROJECT_COMPONENT}")
-else()
-    set(_PROJECT_NAME "${PROJECT_COMPONENT}")
+if(NOT WORKSPACE_NAME)
+  message(FATAL_ERROR "WORKSPACE_NAME must be set.")
 endif()
-project(${_PROJECT_NAME}
+project(${WORKSPACE_NAME}_${PROJECT_COMPONENT}
     VERSION 0.0.3.7
     # COMPAT_VERSION 0.0.0.0
     # SPDX_LICENSE  MIT
@@ -29,13 +30,7 @@ project(${_PROJECT_NAME}
     HOMEPAGE_URL ""
     LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-if(NOT DEFINED WORKSPACE_NAME)
-  set(WORKSPACE_NAME "${PROJECT_NAME}")
-endif()
 
 option(${PROJECT_NAME}_SHARED_LIBS "Build ${PROJECT_NAME} as a shared library." OFF)
 
@@ -45,12 +40,14 @@ else()
   add_library(${PROJECT_NAME} STATIC)
 endif()
 add_library(${WORKSPACE_NAME}::${PROJECT_COMPONENT} ALIAS ${PROJECT_NAME})
+# Keep the installed name identical to the alias
+set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PROJECT_COMPONENT})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
 
-file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE
+file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_INTERFACE CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/src/*.cppm")
-file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_IMPLEMENTATION
+file(GLOB_RECURSE ${PROJECT_NAME}_MODULE_IMPLEMENTATION CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/src/*.cpp")
 target_sources(${PROJECT_NAME}
   PUBLIC
