@@ -5,6 +5,7 @@ module;
 #include <cassert>
 #include <cstddef>
 #include <forward_list>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <span>
@@ -131,11 +132,17 @@ export class memory_data_buffer {
     *       （library_spec.md 4.3節）。本実装は自動的に拡張するため、
     *       アロケーション失敗を除き失敗しない。
     * @pre data.size() == r.size（呼び出し側の責務。不一致時はUB）
+    * @note offset + size が size_t を超える場合は out_of_range を返し、
+    *       バッファは変更しない。
     */
    [[nodiscard]] auto write(this self_type &self, region reg,
                             std::span<std::byte const> data)
        -> data_source_result<void> {
       assert(data.size() == reg.size);
+      if (reg.size > std::numeric_limits<std::size_t>::max() - reg.offset)
+          [[unlikely]] {
+         return make_unexpected(source_errc_type::out_of_range);
+      }
       if (auto const required_end = reg.offset + reg.size;
           required_end > self._size) [[unlikely]] {
          self._resize(required_end);
@@ -151,6 +158,10 @@ export class memory_data_buffer {
    [[nodiscard]] auto append(this self_type &self,
                              std::span<std::byte const> data)
        -> data_buffer_result<region> {
+      if (data.size() > std::numeric_limits<std::size_t>::max() - self._size)
+          [[unlikely]] {
+         return make_unexpected(buffer_errc_type::out_of_range);
+      }
       auto const offset = self._size;
 
       auto const result = region{
@@ -172,6 +183,10 @@ export class memory_data_buffer {
     */
    [[nodiscard]] auto grow(this self_type &self, std::size_t n)
        -> data_buffer_result<region> {
+      if (n > std::numeric_limits<std::size_t>::max() - self._size)
+          [[unlikely]] {
+         return make_unexpected(buffer_errc_type::out_of_range);
+      }
       auto const offset = self._size;
       self._resize(self._size + n);
       return region{

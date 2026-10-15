@@ -126,13 +126,17 @@ class stream_data_source {
    template <class Self>
    [[nodiscard]] auto read(this Self &self, region reg)
        -> result_type<byte_array> {
-      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
-      if (!self.data) [[unlikely]] {
-         if (self.data.bad()) [[unlikely]] {
-            return make_unexpected(errc_type::invalid_member_variable);
-         }
-         self.data.clear();
+      // NOTE: 確保の前に範囲を検証する。regionは外部入力に由来し得るため、
+      //       未検証のsizeで確保すると巨大な確保が先に発生する。
+      //       size()は内部で状態の復帰とシークを行う。
+      auto total = self.size();
+      if (!total) [[unlikely]] {
+         return std::unexpected{std::move(total).error()};
       }
+      if (reg.offset > *total || reg.size > *total - reg.offset) [[unlikely]] {
+         return make_unexpected(errc_type::out_of_range);
+      }
+      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
       if (auto result = self.seekg(reg.offset); !result) {
          return std::unexpected{std::move(result).error()};
       }
@@ -179,10 +183,17 @@ class stream_data_source {
          return std::unexpected{std::move(result).error()};
       }
       auto const endpos = self.data.tellg();
+      if (endpos == typename value_type::pos_type(-1)) [[unlikely]] {
+         return make_unexpected(errc_type::operation_failure);
+      }
       if (auto result = self.seekg(0); !result) {
          return std::unexpected{std::move(result).error()};
       }
-      return endpos - self.data.tellg();
+      auto const startpos = self.data.tellg();
+      if (startpos == typename value_type::pos_type(-1)) [[unlikely]] {
+         return make_unexpected(errc_type::operation_failure);
+      }
+      return endpos - startpos;
    }
 
    auto operator=(stream_data_source const &rhs)
