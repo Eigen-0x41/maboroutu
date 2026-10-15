@@ -1,0 +1,64 @@
+name: maboroutu CI
+
+# 本体の変更を、テストリポジトリ（Eigen-0x41/maboroutu-tests）の
+# 検証ワークフローで検証する。テストリポジトリ側のimplワークフローを
+# 呼び出し、検証対象のライブラリとして本リポジトリの該当コミットを指定する。
+#
+# NOTE: 呼び出し先は @main 固定のため、テストリポジトリ側の変更を先に
+#       mainへ反映してから、本ワークフローを有効にすること。
+# NOTE: pull_request では head.sha を指定する。フォークからのPRでは、
+#       そのコミットがこのリポジトリから取得できないため失敗する。
+
+on:
+   push:
+      branches: [main]
+   pull_request:
+      branches: [main]
+   workflow_dispatch:
+
+concurrency:
+   group: ${{ github.workflow }}-${{ github.ref }}
+   cancel-in-progress: true
+
+permissions:
+   contents: read
+
+jobs:
+   clang:
+      strategy:
+         fail-fast: false
+         matrix:
+            project_directory: [".", "error/abort", "error/terminate", "error/throw"]
+      uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_clang.yml@main
+      with:
+         compiler: clang
+         project_directory: ${{ matrix.project_directory }}
+         build_type: Both
+         library_repository: https://github.com/${{ github.repository }}.git
+         library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+         tests_repository: Eigen-0x41/maboroutu-tests
+         tests_ref: main
+
+   msvc:
+      strategy:
+         fail-fast: false
+         matrix:
+            project_directory: [".", "error/abort", "error/terminate", "error/throw"]
+      uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_msvc.yml@main
+      with:
+         compiler: msvc
+         project_directory: ${{ matrix.project_directory }}
+         build_type: Both
+         library_repository: https://github.com/${{ github.repository }}.git
+         library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+         tests_repository: Eigen-0x41/maboroutu-tests
+         tests_ref: main
+
+   # サニタイザ（ASan + UBSan）。他のジョブとは別のチェックとして表示される。
+   sanitizer:
+      uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_sanitizer.yml@main
+      with:
+         library_repository: https://github.com/${{ github.repository }}.git
+         library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+         tests_repository: Eigen-0x41/maboroutu-tests
+         tests_ref: main

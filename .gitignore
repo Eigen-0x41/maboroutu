@@ -39,3 +39,7 @@
 !/usage
 !/vcpkg-configuration.json
 !/vcpkg.json
+
+#--github
+!/.github/
+!/.github/*
