@@ -1,0 +1,18 @@
+# GitHub Actions の clang-tidy ジョブ専用の設定（合否に影響する）。
+# 開発環境向けの広範な設定は、リポジトリ直下の .clang-tidy を使う。
+#
+# 合否の対象は、誤動作・未定義動作・性能に直結する分類に絞る。
+# 除外した分類:
+#   - readability-* / modernize-* / misc-include-cleaner 等:
+#       モジュール経由の標準ヘッダー取り込みで誤検出が多い、または
+#       命名規則（.clang-tidy）と実装の `_model`・`_concept` が衝突するため。
+#   - performance-enum-size: エラーコードenumの基底型は意図的に既定のまま。
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  performance-*,
+  -performance-enum-size
+WarningsAsErrors: "*"

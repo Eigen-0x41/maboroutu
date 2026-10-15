@@ -26,6 +26,9 @@
 !/extension/
 !/extension/*
 
+!/.github/
+!/.github/*
+
 !/.clang-format
 !/.clang-tidy
 !/CMakeLists.txt

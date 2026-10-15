@@ -76,7 +76,8 @@ export class memory_data_buffer {
          }
       } else if (cmp < 0) {
          auto const diff = _data.size() - required_size;
-         _data.erase(_data.end() - diff, _data.end());
+         _data.erase(_data.end() - static_cast<std::ptrdiff_t>(diff),
+                     _data.end());
          for (std::size_t i = 0; i < diff; i++) {
             _unit_manager.pop_front();
          }
@@ -223,6 +224,9 @@ export class memory_data_buffer {
    }
 
    auto operator=(memory_data_buffer const &value) -> memory_data_buffer & {
+      if (this == &value) [[unlikely]] {
+         return *this;
+      }
       _resize(value._size);
       std::ranges::copy(value._unit_manager, _unit_manager.begin());
       return *this;
