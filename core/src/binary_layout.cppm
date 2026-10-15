@@ -174,7 +174,7 @@ class position_patch {
     */
    auto abandon(this self_type &self) -> void { self._resolved = true; }
 
-   auto operator=(position_patch const &other) -> position_patch & = default;
+   auto operator=(position_patch const &other) -> position_patch & = delete;
    auto operator=(position_patch &&other) noexcept -> position_patch & {
       if (this == &other) {
          return *this;

@@ -196,6 +196,10 @@ class basic_segmented_span {
    container_type _container{};
    region _region{};
 
+   [[nodiscard]] static constexpr auto _max_segments() noexcept -> size_type {
+      return std::numeric_limits<size_type>::max() / UnitSize;
+   }
+
    /*--:  *IMPLIMENT_FIELD*/
  protected:
  public:
@@ -205,26 +209,44 @@ class basic_segmented_span {
    basic_segmented_span() = default;
    basic_segmented_span(basic_segmented_span const &) = default;
    basic_segmented_span(basic_segmented_span &&) = default;
-   basic_segmented_span(container_type span, region reg)
-       : _container(std::move(span)), _region(reg) {
-      // NOTE: 実行時にもthrowによる検証を行うが、
-      //       本来はassertのみの制約でも良い。
-      bool status =
-          span.size() <=
-              (std::numeric_limits<decltype(span.size())>::max() / UnitSize) &&
-          (_region.offset + _region.size) <= (span.size() * UnitSize);
+   /**
+    * @brief 全ユニットを参照するビューを構築する。
+    */
+   basic_segmented_span(container_type span)
+       : _container(std::move(span)),
+         _region({
+             .offset = 0,
+             .size = _container.size() * UnitSize,
+         }) {
+      // NOTE: 検証はムーブ後のメンバ(_container)に対して行う。
+      //       ムーブ元のspanは、std::vector等では空になるため参照しない。
+      bool const status = _container.size() <= _max_segments();
       assert(status && "out of range size than actual span size.");
       if (!status) {
          enter_fatal<std::invalid_argument>(
              "out of range size than actual span size.");
       }
    }
-   basic_segmented_span(container_type span, size_type offset = 0)
-       : _container(std::move(span)),
-         _region({
-             .offset = 0,
-             .size = (UnitSize * span.size()) - offset,
-         }) {}
+   /**
+    * @brief 先頭から size バイトを参照するビューを構築する。
+    */
+   basic_segmented_span(container_type span, size_type size)
+       : basic_segmented_span(std::move(span),
+                              region{.offset = 0, .size = size}) {}
+   basic_segmented_span(container_type span, region reg)
+       : _container(std::move(span)), _region(reg) {
+      // NOTE: 実行時にもthrowによる検証を行うが、
+      //       本来はassertのみの制約でも良い。
+      bool const status =
+          _container.size() <= _max_segments() &&
+          _region.offset <= _container.size() * UnitSize &&
+          _region.size <= _container.size() * UnitSize - _region.offset;
+      assert(status && "out of range size than actual span size.");
+      if (!status) {
+         enter_fatal<std::invalid_argument>(
+             "out of range size than actual span size.");
+      }
+   }
    ~basic_segmented_span() = default;
 
    [[nodiscard]] auto size() const -> size_type { return _region.size; }

@@ -10,6 +10,7 @@ module;
 #include <numeric>
 #include <span>
 #include <tuple>
+#include <utility>
 #include <vector>
 export module maboroutu.memory_data_buffer;
 export import maboroutu.data_buffer;
@@ -93,7 +94,18 @@ export class memory_data_buffer {
       }
       std::ranges::reverse(_data);
    }
-   memory_data_buffer(memory_data_buffer &&) = default;
+   /**
+    * @brief ムーブ元は空（size() == 0）になり、そのまま再利用できる。
+    * @note ユニットは std::forward_list が所有するためノードの
+    *       アドレスは維持され、_data の std::span は有効なままである。
+    */
+   memory_data_buffer(memory_data_buffer &&other) noexcept
+       : _unit_manager(std::move(other._unit_manager)),
+         _data(std::move(other._data)),
+         _size(std::exchange(other._size, 0)) {
+      other._unit_manager.clear();
+      other._data.clear();
+   }
    ~memory_data_buffer() = default;
 
    /**
@@ -215,7 +227,16 @@ export class memory_data_buffer {
       std::ranges::copy(value._unit_manager, _unit_manager.begin());
       return *this;
    }
-   auto operator=(memory_data_buffer &&) -> memory_data_buffer & = default;
+   auto operator=(memory_data_buffer &&other) noexcept -> memory_data_buffer & {
+      if (this != &other) {
+         _unit_manager = std::move(other._unit_manager);
+         _data = std::move(other._data);
+         _size = std::exchange(other._size, 0);
+         other._unit_manager.clear();
+         other._data.clear();
+      }
+      return *this;
+   }
 };
 static_assert(data_buffer<memory_data_buffer>, "");
 static_assert(std::is_constructible_v<data_source_handle, memory_data_buffer &>,
