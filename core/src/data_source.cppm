@@ -4,6 +4,7 @@ module;
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 export module maboroutu.data_source;
@@ -13,12 +14,27 @@ export import maboroutu.error;
 namespace maboroutu {
 
 namespace errc {
-enum class data_source {
+export enum class data_source {
    out_of_range,
    invalid_member_variable,
    invalid_operation,
    operation_failure,
 };
+
+export constexpr auto error_message(data_source code) noexcept
+    -> std::string_view {
+   switch (code) {
+   case data_source::out_of_range:
+      return "data_source: region is out of range";
+   case data_source::invalid_member_variable:
+      return "data_source: invalid member variable";
+   case data_source::invalid_operation:
+      return "data_source: invalid operation";
+   case data_source::operation_failure:
+      return "data_source: operation failed";
+   }
+   return "unknown error";
+}
 } // namespace errc
 
 export template <class T>

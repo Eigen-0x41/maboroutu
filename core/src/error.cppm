@@ -5,6 +5,7 @@ module;
 #include <exception>
 #include <expected>
 #include <memory>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -132,6 +133,20 @@ template <class D> class error_detail<std::monostate, D> {
    auto operator=(error_detail &&rhs) -> error_detail & = default;
 };
 
+/**
+ * @brief enum値を説明文字列へ変換する関数 `error_message(Code)` が
+ * ADLで見つかることを要求する。
+ *
+ * 各モジュールは自身の`errc` enumと同じ名前空間に
+ * `constexpr auto error_message(Code) noexcept -> std::string_view`を
+ * exportして提供する。戻り値は静的記憶域期間の文字列リテラルであり、
+ * 確保を行わない。
+ */
+export template <class Code>
+concept has_error_message = requires(Code code) {
+   { error_message(code) } noexcept -> std::convertible_to<std::string_view>;
+};
+
 // NOTE:
 // enumを指定。成功値保持の際にスタック確保の負荷を少なくし、パフォーマンスを上げる。
 // [[basic_error]]
@@ -187,6 +202,18 @@ class basic_error final : private ErrDetail {
       static_assert(noexcept(ErrDetail::get_if_detail()),
                     "can nothrow calling.");
       return ErrDetail::get_if_detail();
+   }
+
+   /**
+    * @brief エラーコードの説明文字列を返す。
+    *
+    * `error_message(code_type)`がADLで見つかる場合のみ利用できる。
+    * 戻り値は静的記憶域期間の文字列であり、Detailの内容は含まない。
+    */
+   [[nodiscard]] constexpr auto message() const noexcept -> std::string_view
+      requires has_error_message<code_type>
+   {
+      return error_message(_code);
    }
 
    constexpr auto operator==(code_type code) const noexcept -> bool {
@@ -283,12 +310,54 @@ export template <class Code, class Detail = std::monostate,
        std::in_place, code, std::forward<Args>(args)...);
 }
 
+// 例外無効時の診断表示の有効/無効。
+// - MABOROUTU_FATAL_DIAGNOSTICS が定義されていればその値(0/1)を優先する。
+// - 未定義の場合、NDEBUGが未定義(Debug相当)なら有効、定義済みなら無効。
+// - ホスト環境(__STDC_HOSTED__)以外では常に無効。
+// NOTE: マクロはこのモジュールのビルド時に評価される(ライブラリ側の設定)。
+#if !defined(MABOROUTU_FATAL_DIAGNOSTICS)
+#if defined(NDEBUG)
+#define MABOROUTU_FATAL_DIAGNOSTICS 0
+#else
+#define MABOROUTU_FATAL_DIAGNOSTICS 1
+#endif
+#endif
+
+#if MABOROUTU_FATAL_DIAGNOSTICS && __STDC_HOSTED__
+#define MABOROUTU_FATAL_DIAGNOSTICS_ENABLED 1
+#else
+#define MABOROUTU_FATAL_DIAGNOSTICS_ENABLED 0
+#endif
+
+/**
+ * @brief 致命的エラーを報告する。
+ *
+ * 例外が有効な場合は`E(args...)`を送出する。無効な場合は`args`を使わずに
+ * プログラムを終了する(既定は`std::abort`、`MABOROUTU_FATAL_TO_TERMINATE`
+ * 定義時は`std::terminate`)。
+ *
+ * 診断表示が有効な場合、終了前に固定の文字列リテラルのみを標準エラー出力へ
+ * 書き込む。`args`・Detail・例外メッセージなど実行時の値は書式文字列を含め
+ * 一切出力しない。
+ */
 export template <class E, class... Args>
 [[noreturn]] constexpr void enter_fatal(Args &&...args) {
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
    throw E(std::forward<Args>(args)...);
 #else
    ((void)args, ...);
+#if MABOROUTU_FATAL_DIAGNOSTICS_ENABLED
+   if !consteval {
+      // NOTE: fputsは書式解釈を行わない。出力は固定リテラルのみ。
+#if defined(MABOROUTU_FATAL_TO_TERMINATE)
+      std::fputs("maboroutu: fatal error (exceptions disabled): terminate\n",
+                 stderr);
+#else
+      std::fputs("maboroutu: fatal error (exceptions disabled): abort\n",
+                 stderr);
+#endif
+   }
+#endif
    // NOTE: exception、cstdlib伴にfreestandingで利用可能であることを確認済み
 #if defined(MABOROUTU_FATAL_TO_TERMINATE)
    std::terminate(); // <exception>

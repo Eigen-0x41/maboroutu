@@ -4,6 +4,7 @@ module;
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 export module maboroutu.sequential_source;
 export import maboroutu.core;
 export import maboroutu.error;
@@ -11,11 +12,24 @@ export import maboroutu.error;
 namespace maboroutu {
 
 namespace errc {
-enum class sequential_source {
+export enum class sequential_source {
    out_of_range,
    invalid_member_variable,
    operation_failure,
 };
+
+export constexpr auto error_message(sequential_source code) noexcept
+    -> std::string_view {
+   switch (code) {
+   case sequential_source::out_of_range:
+      return "sequential_source: read size is out of range";
+   case sequential_source::invalid_member_variable:
+      return "sequential_source: invalid member variable";
+   case sequential_source::operation_failure:
+      return "sequential_source: operation failed";
+   }
+   return "unknown error";
+}
 } // namespace errc
 
 export template <class T>

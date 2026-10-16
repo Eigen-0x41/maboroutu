@@ -1,5 +1,6 @@
 module;
 #include <concepts>
+#include <string_view>
 export module maboroutu.io_pattern;
 export import maboroutu.error;
 
@@ -7,7 +8,11 @@ namespace maboroutu {
 
 // TODO: エラー値の選定
 namespace errc {
-enum class io_pattern {};
+export enum class io_pattern {};
+
+export constexpr auto error_message(io_pattern) noexcept -> std::string_view {
+   return "unknown error";
+}
 } // namespace errc
 
 export template <class T> using io_pattern_result = result<T, errc::io_pattern>;

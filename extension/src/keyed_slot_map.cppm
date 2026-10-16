@@ -3,6 +3,7 @@ module;
 #include <expected>
 #include <functional>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -13,12 +14,27 @@ import maboroutu.slot_map;
 namespace maboroutu {
 
 namespace errc {
-enum class keyed_slot_map {
+export enum class keyed_slot_map {
    failed_to_add_key,
    failed_to_constructed,
    key_was_not_contain,
    failed_to_domain_not_be_resolved,
 };
+
+export constexpr auto error_message(keyed_slot_map code) noexcept
+    -> std::string_view {
+   switch (code) {
+   case keyed_slot_map::failed_to_add_key:
+      return "keyed_slot_map: failed to add key";
+   case keyed_slot_map::failed_to_constructed:
+      return "keyed_slot_map: failed to construct value";
+   case keyed_slot_map::key_was_not_contain:
+      return "keyed_slot_map: key was not contained";
+   case keyed_slot_map::failed_to_domain_not_be_resolved:
+      return "keyed_slot_map: failed to resolve domain";
+   }
+   return "unknown error";
+}
 }
 
 export template <class T>

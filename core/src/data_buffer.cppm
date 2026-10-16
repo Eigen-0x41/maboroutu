@@ -9,6 +9,7 @@ module;
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 export module maboroutu.data_buffer;
 export import maboroutu.core;
@@ -331,12 +332,25 @@ static_assert(
     "");
 
 namespace errc {
-enum class data_buffer {
+export enum class data_buffer {
    out_of_range,
    operation_failure,
    invalid_operation,
 };
+
+export constexpr auto error_message(data_buffer code) noexcept
+    -> std::string_view {
+   switch (code) {
+   case data_buffer::out_of_range:
+      return "data_buffer: region is out of range";
+   case data_buffer::operation_failure:
+      return "data_buffer: operation failed";
+   case data_buffer::invalid_operation:
+      return "data_buffer: invalid operation";
+   }
+   return "unknown error";
 }
+} // namespace errc
 
 export template <class T>
 using data_buffer_result = result<T, errc::data_buffer>;
