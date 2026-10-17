@@ -26,8 +26,8 @@ project(${WORKSPACE_NAME}_${PROJECT_COMPONENT}
     VERSION 0.0.3.7
     # COMPAT_VERSION 0.0.0.0
     # SPDX_LICENSE  MIT
-    DESCRIPTION "TODO: ADD DESCRIPTION"
-    HOMEPAGE_URL ""
+    DESCRIPTION "Core modules of maboroutu: error handling, data source and buffer abstractions, binary conversion and layout."
+    HOMEPAGE_URL "https://github.com/Eigen-0x41/maboroutu"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -97,7 +97,7 @@ include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
     VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion)
+    COMPATIBILITY SameMinorVersion)
 file(WRITE
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cmake.in
   "@PACKAGE_INIT@\n"
