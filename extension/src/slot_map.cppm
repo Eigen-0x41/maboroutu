@@ -562,7 +562,7 @@ class basic_slot_map {
 
          return static_cast<index_type>(construct_target);
       }
-      enter_fatal<std::out_of_range>("Continer is not have push_back().");
+      enter_fatal<std::out_of_range>("Container does not have push_back().");
    }
 
    /**
@@ -748,7 +748,7 @@ class basic_slot_map {
          ++self._size;
          return static_cast<index_type>(construct_target);
       }
-      enter_fatal<std::out_of_range>("Continer is not have push_back().");
+      enter_fatal<std::out_of_range>("Container does not have push_back().");
    }
 
    /**
@@ -817,7 +817,7 @@ class basic_slot_map {
          ++self._size;
          return static_cast<index_type>(construct_target);
       }
-      enter_fatal<std::out_of_range>("Continer is not have emplace_back().");
+      enter_fatal<std::out_of_range>("Container does not have emplace_back().");
    }
 
    /**
@@ -830,7 +830,7 @@ class basic_slot_map {
     */
    void erase(this self_type &self, index_type const key) {
       if (!self.contains(key)) [[unlikely]] {
-         enter_fatal<std::out_of_range>("Key is not contains.");
+         enter_fatal<std::out_of_range>("Key is not contained.");
       }
 
       node_type &target = self._container[static_cast<iindex_type>(key)];
