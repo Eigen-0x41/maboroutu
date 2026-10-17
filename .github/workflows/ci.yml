@@ -62,3 +62,37 @@ jobs:
          library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
          tests_repository: Eigen-0x41/maboroutu-tests
          tests_ref: main
+
+   # 静的解析（clang-tidy）。他のジョブとは別のチェックとして表示される。
+   # 設定は .github/clang-tidy-ci.yml（誤動作・未定義動作・性能に直結する分類のみ）。
+   # 開発環境向けの広範な設定（.clang-tidy）とは別で、検出は合否に影響する。
+   clang-tidy:
+      runs-on: ubuntu-24.04
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: Install Clang 18 + clang-tidy + libc++ + Ninja
+           run: |
+              sudo apt-get update
+              sudo apt-get install -y --no-install-recommends \
+                clang-18 clang-tidy-18 libc++-18-dev libc++abi-18-dev ninja-build
+
+         - name: Configure and build (generates module interfaces)
+           run: |
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_COMPILER=clang-18 \
+                -DCMAKE_CXX_COMPILER=clang++-18 \
+                -DCMAKE_CXX_FLAGS=-stdlib=libc++ \
+                -DMABOROUTU_ENABLE_EXTENSION=ON \
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+              cmake --build build
+
+         - name: Run clang-tidy
+           run: |
+              status=0
+              for f in core/src/*.cppm extension/src/*.cppm; do
+                clang-tidy-18 -p build --config-file=.github/clang-tidy-ci.yml \
+                  --quiet "$f" || status=1
+              done
+              exit "$status"
