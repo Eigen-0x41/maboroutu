@@ -96,3 +96,33 @@ jobs:
                   --quiet "$f" || status=1
               done
               exit "$status"
+
+   # 利用例（examples/）のビルドと実行。READMEに載せる例が、現在のAPIで
+   # ビルド・動作することの検証（陳腐化の検知）。
+   examples:
+      runs-on: ubuntu-24.04
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: Install Clang 18 + libc++ + Ninja
+           run: |
+              sudo apt-get update
+              sudo apt-get install -y --no-install-recommends \
+                clang-18 libc++-18-dev libc++abi-18-dev ninja-build
+
+         - name: Configure and build examples
+           run: |
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_COMPILER=clang-18 \
+                -DCMAKE_CXX_COMPILER=clang++-18 \
+                -DCMAKE_CXX_FLAGS=-stdlib=libc++ \
+                -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ \
+                -DMABOROUTU_BUILD_EXAMPLES=ON
+              cmake --build build
+
+         - name: Run examples
+           run: |
+              for e in binary_roundtrip length_prefixed_patch error_handling; do
+                ./build/examples/"$e"
+              done

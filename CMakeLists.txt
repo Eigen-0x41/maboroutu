@@ -21,3 +21,13 @@ option(MABOROUTU_ENABLE_EXTENSION
 if(MABOROUTU_ENABLE_EXTENSION)
   add_subdirectory(extension)
 endif()
+
+option(MABOROUTU_BUILD_EXAMPLES
+   "Build the usage examples in examples/ (requires MABOROUTU_ENABLE_EXTENSION)."
+   OFF)
+if(MABOROUTU_BUILD_EXAMPLES)
+  if(NOT MABOROUTU_ENABLE_EXTENSION)
+    message(FATAL_ERROR "MABOROUTU_BUILD_EXAMPLES requires MABOROUTU_ENABLE_EXTENSION.")
+  endif()
+  add_subdirectory(examples)
+endif()

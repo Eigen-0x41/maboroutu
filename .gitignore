@@ -25,6 +25,8 @@
 !/core/*
 !/extension/
 !/extension/*
+!/examples/
+!/examples/*
 
 !/.github/
 !/.github/*
@@ -33,6 +35,7 @@
 !/.clang-tidy
 !/CMakeLists.txt
 !/LICENSE
+!/README.md
 
 #--vcpkg
 !/portfile.cmake
