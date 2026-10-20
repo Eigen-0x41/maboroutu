@@ -82,6 +82,14 @@ int main() {
 | [`length_prefixed_patch.cpp`](examples/length_prefixed_patch.cpp) | 本体を書いた後で、先頭の長さフィールドを書き戻す |
 | [`error_handling.cpp`](examples/error_handling.cpp) | 結果型・エラーコード・エラーメッセージ |
 
+### エラー処理の方針
+
+- **使用方法の誤り**（事前条件の違反）は、Debug ビルドで `assert` により検出する。Release ビルドでは検出せず、未定義動作となる。
+- コンパイル時に検出できる誤りは、`static_assert` と concept で防ぐ。
+- 独自の API は、原則として `std::expected`（`result<T, Code>`）で、復帰可能な失敗を返す。外部入力に由来する値の誤りも、これに含まれる。
+- STL に近い使用感のクラス（`slot_map` など）は、STL と同様に、呼び出し側が事前に確認する関数（`contains()` など）で誤りを防ぐことを前提とする。
+- 例外は、復帰できない致命的なエラーに限って送出する。例外が無効な場合は、`std::abort` または `std::terminate` で終了する（次節）。
+
 ### 例外が無効な場合
 
 `-fno-exceptions` では、復帰できないエラーは、例外の代わりにプログラムの終了（既定は `std::abort`）になる。
