@@ -7,6 +7,7 @@ module;
 #include <cstdint>
 #include <cstring>
 #include <expected>
+#include <limits>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -296,6 +297,12 @@ static_assert(
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t offset, std::size_t count)
     -> data_source_result<std::vector<T>> {
+   // count は外部入力に由来しうるため、バイト数の算出で桁あふれする場合は
+   // 範囲外として扱う（桁あふれすると、サイズの検査をすり抜ける）。
+   if (count > std::numeric_limits<std::size_t>::max() / sizeof(T))
+       [[unlikely]] {
+      return make_unexpected(errc::data_source::out_of_range);
+   }
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * count,
@@ -323,6 +330,12 @@ static_assert(
 export template <endian Endian, numberable T, sequential_source Src>
 [[nodiscard]] auto read_vector(Src &src, std::size_t count)
     -> sequential_source_result<std::vector<T>> {
+   // count は外部入力に由来しうるため、バイト数の算出で桁あふれする場合は
+   // 範囲外として扱う。
+   if (count > std::numeric_limits<std::size_t>::max() / sizeof(T))
+       [[unlikely]] {
+      return make_unexpected(errc::sequential_source::out_of_range);
+   }
    auto bytes = src.read(sizeof(T) * count);
    if (!bytes) {
       return std::unexpected(std::move(bytes).error());

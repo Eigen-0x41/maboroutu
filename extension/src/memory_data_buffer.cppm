@@ -64,6 +64,15 @@ export class memory_data_buffer {
              (reg.size <= self._size - reg.offset);
    }
 
+   // _resize() のブロック数の算出（切り上げ）が桁あふれしない範囲か。
+   // 範囲外のサイズでは、ブロック数が過小に算出され、_size だけが
+   // 大きい不整合な状態になる。
+   [[nodiscard]] static constexpr auto _can_resize(std::size_t size) noexcept
+       -> bool {
+      return size <= std::numeric_limits<std::size_t>::max() -
+                         (std::tuple_size_v<unit_type> - 1);
+   }
+
    void _resize(std::size_t size) {
       auto const required_size = (size + std::tuple_size_v<unit_type> - 1) /
                                  std::tuple_size_v<unit_type>;
@@ -158,6 +167,9 @@ export class memory_data_buffer {
       }
       if (auto const required_end = reg.offset + reg.size;
           required_end > self._size) [[unlikely]] {
+         if (!_can_resize(required_end)) [[unlikely]] {
+            return make_unexpected(source_errc_type::out_of_range);
+         }
          self._resize(required_end);
       }
       view_type view(self._data, reg);
@@ -173,6 +185,9 @@ export class memory_data_buffer {
        -> data_buffer_result<region> {
       if (data.size() > std::numeric_limits<std::size_t>::max() - self._size)
           [[unlikely]] {
+         return make_unexpected(buffer_errc_type::out_of_range);
+      }
+      if (!_can_resize(self._size + data.size())) [[unlikely]] {
          return make_unexpected(buffer_errc_type::out_of_range);
       }
       auto const offset = self._size;
@@ -198,6 +213,9 @@ export class memory_data_buffer {
        -> data_buffer_result<region> {
       if (n > std::numeric_limits<std::size_t>::max() - self._size)
           [[unlikely]] {
+         return make_unexpected(buffer_errc_type::out_of_range);
+      }
+      if (!_can_resize(self._size + n)) [[unlikely]] {
          return make_unexpected(buffer_errc_type::out_of_range);
       }
       auto const offset = self._size;
