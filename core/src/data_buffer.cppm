@@ -387,6 +387,13 @@ export struct null_data_buffer {
           .size = 0,
       };
    }
+   [[nodiscard]] static auto read_into(region r, std::span<std::byte>)
+       -> result_type<void> {
+      if (r.size != 0) [[unlikely]] {
+         return make_unexpected(errc::data_source::out_of_range);
+      }
+      return {};
+   }
    [[nodiscard]] static auto write(region, std::span<std::byte const>)
        -> result_type<void> {
       return {};

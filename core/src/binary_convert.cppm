@@ -123,22 +123,63 @@ export template <endian Endian, numberable T>
    return std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
 }
 
+namespace binary_convert_detail {
+
+// read_into で書き込まれた生のバイト列（ストリーム上のEndian順）を、
+// 値としてその場でホストのEndianへ変換する。
+template <endian Endian, numberable T, std::size_t Extent>
+constexpr auto fix_endian(std::span<T, Extent> values) noexcept -> void {
+   if constexpr (sizeof(T) != 1 && Endian != endian::native) {
+      for (auto &value : values) {
+         value = from_bytes<Endian, T>(
+             std::bit_cast<std::array<std::byte, sizeof(T)>>(value));
+      }
+   }
+}
+
+// sequential_source が read_into(span) を持つ場合のみ、確保を伴わずに読む。
+template <class Src>
+concept sequential_read_into =
+    requires(Src &src, std::span<std::byte> dst) {
+       { src.read_into(dst) } -> std::same_as<sequential_source_result<void>>;
+    };
+
+// dst.size() バイトを読む。read_into があれば使い、無ければ read() を経由する。
+template <sequential_source Src>
+[[nodiscard]] auto read_exact(Src &src, std::span<std::byte> dst)
+    -> sequential_source_result<void> {
+   if constexpr (sequential_read_into<Src>) {
+      return src.read_into(dst);
+   } else {
+      auto bytes = src.read(dst.size());
+      if (!bytes) {
+         return std::unexpected(std::move(bytes).error());
+      }
+      assert(bytes->size == dst.size() &&
+             "sequential_source::read() violated its no-short-read contract.");
+      std::memcpy(dst.data(), bytes->value.get(), dst.size());
+      return {};
+   }
+}
+
+} // namespace binary_convert_detail
+
 // 単一値読み込み。
 export template <endian Endian, numberable T, data_source Src>
 [[nodiscard]] auto read_value(Src &src, std::size_t offset)
     -> data_source_result<T> {
-   auto bytes = src.read(region{
-       .offset = offset,
-       .size = sizeof(T),
-   });
-   if (!bytes) {
-      return std::unexpected(std::move(bytes).error());
+   T value{};
+   if (auto result = src.read_into(
+           region{
+               .offset = offset,
+               .size = sizeof(T),
+           },
+           std::as_writable_bytes(std::span<T, 1>(&value, 1)));
+       !result) {
+      return std::unexpected(std::move(result).error());
    }
-   assert(bytes->size == sizeof(T) &&
-          "data_source::read() violated its no-short-read contract.");
-   std::array<std::byte, sizeof(T)> buf{};
-   std::memcpy(buf.data(), bytes->value.get(), sizeof(T));
-   return from_bytes<Endian, T>(buf);
+   binary_convert_detail::fix_endian<Endian>(std::span<T, 1>(&value, 1));
+   return value;
 }
 static_assert(
     requires(null_data_source src, std::size_t size) {
@@ -148,15 +189,14 @@ static_assert(
     }, "");
 export template <endian Endian, numberable T, sequential_source Src>
 [[nodiscard]] auto read_value(Src &src) -> sequential_source_result<T> {
-   auto bytes = src.read(sizeof(T));
-   if (!bytes) {
-      return std::unexpected(std::move(bytes).error());
+   T value{};
+   if (auto result = binary_convert_detail::read_exact(
+           src, std::as_writable_bytes(std::span<T, 1>(&value, 1)));
+       !result) {
+      return std::unexpected(std::move(result).error());
    }
-   assert(bytes->size == sizeof(T) &&
-          "data_source::read() violated its no-short-read contract.");
-   std::array<std::byte, sizeof(T)> buf{};
-   std::memcpy(buf.data(), bytes->value.get(), sizeof(T));
-   return from_bytes<Endian, T>(buf);
+   binary_convert_detail::fix_endian<Endian>(std::span<T, 1>(&value, 1));
+   return value;
 }
 static_assert(
     requires(null_sequential_source src, std::size_t size) {
@@ -201,21 +241,17 @@ static_assert(
 export template <endian Endian, numberable T, std::size_t Size, data_source Src>
 [[nodiscard]] auto read_array(Src &src, std::size_t offset)
     -> data_source_result<std::array<T, Size>> {
-   auto bytes = src.read(region{
-       .offset = offset,
-       .size = sizeof(T) * Size,
-   });
-   if (!bytes) {
-      return std::unexpected(std::move(bytes).error());
-   }
-   assert(bytes->size == sizeof(T) * Size &&
-          "data_source::read() violated its no-short-read contract.");
    std::array<T, Size> ret_value{};
-   for (std::size_t i = 0; i < Size; ++i) {
-      std::array<std::byte, sizeof(T)> buf{};
-      std::memcpy(buf.data(), bytes->value.get() + (i * sizeof(T)), sizeof(T));
-      ret_value[i] = from_bytes<Endian, T>(buf);
+   if (auto result = src.read_into(
+           region{
+               .offset = offset,
+               .size = sizeof(T) * Size,
+           },
+           std::as_writable_bytes(std::span<T, Size>(ret_value)));
+       !result) {
+      return std::unexpected(std::move(result).error());
    }
+   binary_convert_detail::fix_endian<Endian>(std::span<T, Size>(ret_value));
    return ret_value;
 }
 static_assert(
@@ -228,18 +264,13 @@ export template <endian Endian, numberable T, std::size_t Size,
                  sequential_source Src>
 [[nodiscard]] auto read_array(Src &src)
     -> sequential_source_result<std::array<T, Size>> {
-   auto bytes = src.read(sizeof(T) * Size);
-   if (!bytes) {
-      return std::unexpected(std::move(bytes).error());
-   }
-   assert(bytes->size == sizeof(T) * Size &&
-          "data_source::read() violated its no-short-read contract.");
    std::array<T, Size> ret_value{};
-   for (std::size_t i = 0; i < Size; ++i) {
-      std::array<std::byte, sizeof(T)> buf{};
-      std::memcpy(buf.data(), bytes->value.get() + (i * sizeof(T)), sizeof(T));
-      ret_value[i] = from_bytes<Endian, T>(buf);
+   if (auto result = binary_convert_detail::read_exact(
+           src, std::as_writable_bytes(std::span<T, Size>(ret_value)));
+       !result) {
+      return std::unexpected(std::move(result).error());
    }
+   binary_convert_detail::fix_endian<Endian>(std::span<T, Size>(ret_value));
    return ret_value;
 }
 static_assert(
@@ -303,6 +334,9 @@ export template <endian Endian, numberable T, data_source Src>
        [[unlikely]] {
       return make_unexpected(errc::data_source::out_of_range);
    }
+   // NOTE: ここでは read_into ではなく read を使う。read_into では、
+   //       region の検証より前に、外部入力由来の count で出力先を確保する
+   //       ことになるため。read は確保の前に region を検証する。
    auto bytes = src.read(region{
        .offset = offset,
        .size = sizeof(T) * count,

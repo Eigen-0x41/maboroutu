@@ -49,11 +49,14 @@ using uint_storage_t = typename uint_storage<Bytes>::type;
 export template <std::size_t Bytes, endian Endian, data_source Src>
 [[nodiscard]] auto read_uint(Src &src, std::size_t offset)
     -> data_source_result<uint_storage_t<Bytes>> {
-   auto result = src.read(region{
-       .offset = offset,
-       .size = Bytes,
-   });
-   if (!result) [[unlikely]] {
+   std::array<std::byte, Bytes> bytes{};
+   if (auto result = src.read_into(
+           region{
+               .offset = offset,
+               .size = Bytes,
+           },
+           std::span<std::byte>(bytes));
+       !result) [[unlikely]] {
       return std::unexpected(std::move(result).error());
    }
 
@@ -66,7 +69,7 @@ export template <std::size_t Bytes, endian Endian, data_source Src>
                     "not supported endian.");
       auto const byte_index = (Endian == endian::little) ? i : (Bytes - 1 - i);
       value |= static_cast<storage_type>(
-                   static_cast<std::uint8_t>(result->value[byte_index]))
+                   static_cast<std::uint8_t>(bytes[byte_index]))
                << (CHAR_BIT * i);
    }
    return value;

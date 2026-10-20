@@ -50,6 +50,48 @@ class stream_data_source {
    template <class T> using result_type = data_source_result<T>;
 
  protected:
+   /**
+    * @brief region が総サイズに収まることを検証する（size() を呼ぶ）。
+    */
+   template <class Self>
+   [[nodiscard]] auto _check_region(this Self &self, region reg)
+       -> result_type<void> {
+      auto total = self.size();
+      if (!total) [[unlikely]] {
+         return std::unexpected{std::move(total).error()};
+      }
+      if (reg.offset > *total || reg.size > *total - reg.offset) [[unlikely]] {
+         return make_unexpected(errc_type::out_of_range);
+      }
+      return {};
+   }
+   /**
+    * @brief 検証済みの region を out の先頭へ読み取る。
+    */
+   template <class Self>
+   [[nodiscard]] auto _read_checked(this Self &self, region reg,
+                                    std::byte *out) -> result_type<void> {
+      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
+      if (auto result = self.seekg(reg.offset); !result) {
+         return std::unexpected{std::move(result).error()};
+      }
+      self.data.read(reinterpret_cast<char *>(out),
+                     static_cast<std::streamsize>(reg.size));
+      // NOTE: 指定サイズを読み込む前にEOFに達した場合はfailとなる。
+      if (self.data.fail()) [[unlikely]] {
+         // NOTE: 仕様によるとbadbitになることは無いらしい。
+         //       ただし、fail()がbadbitも検出するためその回避。
+         if (self.data.bad()) [[unlikely]] {
+            return make_unexpected(errc_type::invalid_member_variable);
+         }
+         return make_unexpected(
+             (static_cast<std::size_t>(self.data.gcount()) != reg.size)
+                 ? errc_type::out_of_range
+                 : errc_type::operation_failure);
+      }
+      return {};
+   }
+
    value_type data;
 
  private:
@@ -128,37 +170,33 @@ class stream_data_source {
        -> result_type<byte_array> {
       // NOTE: 確保の前に範囲を検証する。regionは外部入力に由来し得るため、
       //       未検証のsizeで確保すると巨大な確保が先に発生する。
-      //       size()は内部で状態の復帰とシークを行う。
-      auto total = self.size();
-      if (!total) [[unlikely]] {
-         return std::unexpected{std::move(total).error()};
-      }
-      if (reg.offset > *total || reg.size > *total - reg.offset) [[unlikely]] {
-         return make_unexpected(errc_type::out_of_range);
-      }
-      assert(reg.size <= std::numeric_limits<std::streamsize>::max());
-      if (auto result = self.seekg(reg.offset); !result) {
-         return std::unexpected{std::move(result).error()};
+      if (auto checked = self._check_region(reg); !checked) [[unlikely]] {
+         return std::unexpected{std::move(checked).error()};
       }
       byte_array ret_value{
           .value = std::make_unique<decltype(ret_value)::value_type>(reg.size),
           .size = reg.size,
       };
-      self.data.read(reinterpret_cast<char *>(ret_value.value.get()),
-                     ret_value.size);
-      // NOTE: 指定サイズを読み込む前にEOFに達した場合はfailとなる。
-      if (self.data.fail()) [[unlikely]] {
-         // NOTE: 仕様によるとbadbitになることは無いらしい。
-         //       ただし、fail()がbadbitも検出するためその回避。
-         if (self.data.bad()) [[unlikely]] {
-            return make_unexpected(errc_type::invalid_member_variable);
-         }
-         return make_unexpected(
-             (static_cast<std::size_t>(self.data.gcount()) != reg.size)
-                 ? errc_type::out_of_range
-                 : errc_type::operation_failure);
+      if (auto result = self._read_checked(reg, ret_value.value.get());
+          !result) [[unlikely]] {
+         return std::unexpected{std::move(result).error()};
       }
       return ret_value;
+   }
+
+   /**
+    * @brief region で指定した範囲を dst の先頭へ読み取る。
+    *
+    * @pre dst.size() >= reg.size（呼び出し側の責務。違反は assert で検出）
+    */
+   template <class Self>
+   [[nodiscard]] auto read_into(this Self &self, region reg,
+                                std::span<std::byte> dst) -> result_type<void> {
+      assert(dst.size() >= reg.size);
+      if (auto checked = self._check_region(reg); !checked) [[unlikely]] {
+         return std::unexpected{std::move(checked).error()};
+      }
+      return self._read_checked(reg, dst.data());
    }
 
    /**

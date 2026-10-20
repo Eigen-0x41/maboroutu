@@ -77,6 +77,25 @@ class sequential_view {
       return convert_from_data_source_result_error_type(result);
    }
 
+   /**
+    * @brief dst.size() バイトを、確保を伴わずに dst へ読み取る。
+    *
+    * @note 失敗時は count() を進めない。
+    */
+   [[nodiscard]] auto read_into(std::span<std::byte> dst) -> result_type<void> {
+      auto result = _src->read_into(
+          region{
+              .offset = _count,
+              .size = dst.size(),
+          },
+          dst);
+      if (result) [[likely]] {
+         _count += dst.size();
+         return {};
+      }
+      return convert_from_data_source_result_error_type(result);
+   }
+
    template <class Self>
       requires writable_data_source<typename Self::value_type>
    [[nodiscard]] auto write(this Self &self, std::span<std::byte const> data)

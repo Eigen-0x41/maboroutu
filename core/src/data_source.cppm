@@ -41,8 +41,9 @@ export template <class T>
 using data_source_result = result<T, errc::data_source>;
 
 export template <class T>
-concept data_source = requires(T &src, region r) {
+concept data_source = requires(T &src, region r, std::span<std::byte> dst) {
    { src.read(r) } -> std::same_as<data_source_result<byte_array>>;
+   { src.read_into(r, dst) } -> std::same_as<data_source_result<void>>;
    { src.size() } -> std::same_as<data_source_result<std::size_t>>;
 };
 
@@ -58,6 +59,8 @@ export class writable_data_source_handle {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(region r)
           -> data_source_result<byte_array> = 0;
+      [[nodiscard]] virtual auto read_into(region r, std::span<std::byte> dst)
+          -> data_source_result<void> = 0;
       [[nodiscard]] virtual auto write(region r,
                                        std::span<std::byte const> data)
           -> data_source_result<void> = 0;
@@ -73,6 +76,10 @@ export class writable_data_source_handle {
       [[nodiscard]] auto read(region r)
           -> data_source_result<byte_array> override {
          return value.read(r);
+      }
+      [[nodiscard]] auto read_into(region r, std::span<std::byte> dst)
+          -> data_source_result<void> override {
+         return value.read_into(r, dst);
       }
       [[nodiscard]] auto write(region r, std::span<std::byte const> data)
           -> data_source_result<void> override {
@@ -108,6 +115,9 @@ export class writable_data_source_handle {
        : _value(std::make_unique<_model<T>>(std::move(v))) {}
 
    [[nodiscard]] auto read(region r) { return _value->read(r); }
+   [[nodiscard]] auto read_into(region r, std::span<std::byte> dst) {
+      return _value->read_into(r, dst);
+   }
    [[nodiscard]] auto write(region r, std::span<std::byte const> data) {
       return _value->write(r, data);
    }
@@ -135,6 +145,8 @@ export class data_source_handle {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(region r)
           -> data_source_result<byte_array> = 0;
+      [[nodiscard]] virtual auto read_into(region r, std::span<std::byte> dst)
+          -> data_source_result<void> = 0;
       [[nodiscard]] virtual auto size() const
           -> data_source_result<std::size_t> = 0;
       [[nodiscard]] virtual auto try_clone() const
@@ -147,6 +159,10 @@ export class data_source_handle {
       [[nodiscard]] auto read(region r)
           -> data_source_result<byte_array> override {
          return value.read(r);
+      }
+      [[nodiscard]] auto read_into(region r, std::span<std::byte> dst)
+          -> data_source_result<void> override {
+         return value.read_into(r, dst);
       }
       [[nodiscard]] auto size() const
           -> data_source_result<std::size_t> override {
@@ -179,6 +195,9 @@ export class data_source_handle {
        : _value(std::make_unique<_model<T>>(std::move(value))) {}
 
    [[nodiscard]] auto read(region r) { return _value->read(r); }
+   [[nodiscard]] auto read_into(region r, std::span<std::byte> dst) {
+      return _value->read_into(r, dst);
+   }
    [[nodiscard]] auto size() const { return _value->size(); }
 
    [[nodiscard]] auto try_copy(this data_source_handle const &self)
@@ -211,6 +230,13 @@ export struct null_data_source {
           .size = 0,
       };
    }
+   [[nodiscard]] static auto read_into(region r, std::span<std::byte>)
+       -> result_type<void> {
+      if (r.size != 0) [[unlikely]] {
+         return make_unexpected(errc::data_source::out_of_range);
+      }
+      return {};
+   }
 };
 static_assert(data_source<null_data_source>, "");
 static_assert(!writable_data_source<null_data_source>, "");
@@ -232,6 +258,13 @@ export struct null_writable_data_source {
           .value = std::make_unique<byte_array::value_type>(0),
           .size = 0,
       };
+   }
+   [[nodiscard]] static auto read_into(region r, std::span<std::byte>)
+       -> result_type<void> {
+      if (r.size != 0) [[unlikely]] {
+         return make_unexpected(errc::data_source::out_of_range);
+      }
+      return {};
    }
    [[nodiscard]] auto write(region, std::span<std::byte const>)
        -> result_type<void> {

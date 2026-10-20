@@ -148,6 +148,25 @@ export class memory_data_buffer {
    }
 
    /**
+    * @brief region で指定した範囲を dst の先頭へ読み取る。
+    *
+    * @pre dst.size() >= reg.size（呼び出し側の責務。不一致時はUB）
+    * @note 短縮読み込み契約（v1.17）に従い、range が現在のサイズを超える
+    *       場合は out_of_range を返す。この場合 dst は変更しない。
+    */
+   [[nodiscard]] auto read_into(this self_type const &self, region reg,
+                                std::span<std::byte> dst)
+       -> data_source_result<void> {
+      assert(dst.size() >= reg.size);
+      if (!self._in_range(reg)) [[unlikely]] {
+         return make_unexpected(source_errc_type::out_of_range);
+      }
+      const_view_type view(self._data, reg);
+      std::ranges::copy(view, dst.data());
+      return {};
+   }
+
+   /**
     * @brief region で指定した範囲へ書き込む。
     *
     * @note range が現在のサイズを超える場合の挙動は実装定義
