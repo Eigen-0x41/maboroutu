@@ -204,9 +204,12 @@ export struct null_sequential_source {
    [[nodiscard]] static auto count() -> std::size_t { return 0; }
    [[nodiscard]] static auto read(std::size_t size)
        -> sequential_source_result<byte_array> {
+      if (size != 0) [[unlikely]] {
+         return make_unexpected(errc::sequential_source::out_of_range);
+      }
       return byte_array{
-          .value = std::make_unique<byte_array::value_type>(size),
-          .size = size,
+          .value = std::make_unique<byte_array::value_type>(0),
+          .size = 0,
       };
    }
 };
@@ -226,9 +229,12 @@ export struct null_writable_sequential_source {
    [[nodiscard]] static auto count() noexcept -> std::size_t { return 0; }
    [[nodiscard]] static auto read(std::size_t size) noexcept
        -> sequential_source_result<byte_array> {
+      if (size != 0) [[unlikely]] {
+         return make_unexpected(errc::sequential_source::out_of_range);
+      }
       return byte_array{
-          .value = std::make_unique<byte_array::value_type>(size),
-          .size = size,
+          .value = std::make_unique<byte_array::value_type>(0),
+          .size = 0,
       };
    }
    [[nodiscard]] static auto

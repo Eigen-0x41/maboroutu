@@ -379,9 +379,12 @@ export struct null_data_buffer {
 
    [[nodiscard]] static auto size() -> result_type<std::size_t> { return 0; }
    [[nodiscard]] static auto read(region r) -> result_type<byte_array> {
+      if (r.size != 0) [[unlikely]] {
+         return make_unexpected(errc::data_source::out_of_range);
+      }
       return byte_array{
-          .value = std::make_unique<byte_array::value_type>(r.size),
-          .size = r.size,
+          .value = std::make_unique<byte_array::value_type>(0),
+          .size = 0,
       };
    }
    [[nodiscard]] static auto write(region, std::span<std::byte const>)

@@ -247,14 +247,12 @@ class stream_writable_data_source : public stream_data_source<Stream> {
                             std::span<std::byte const> data)
        -> result_type<void> {
       assert(reg.size <= std::numeric_limits<std::streamsize>::max());
+      assert(data.size() == reg.size);
       if (!self.data) [[unlikely]] {
          if (self.data.bad()) [[unlikely]] {
             return make_unexpected(errc_type::invalid_member_variable);
          }
          self.data.clear();
-      }
-      if (data.size() < reg.size) [[unlikely]] {
-         return make_unexpected(errc_type::out_of_range);
       }
       if (auto result = self.seekp(reg.offset); !result) {
          return std::unexpected{std::move(result).error()};
