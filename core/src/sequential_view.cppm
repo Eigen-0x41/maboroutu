@@ -78,19 +78,21 @@ class sequential_view {
    }
 
    /**
-    * @brief dst.size() バイトを、確保を伴わずに dst へ読み取る。
+    * @brief size バイトを、確保を伴わずに dst の先頭へ読み取る。
     *
+    * @pre dst.size() >= size（呼び出し側の責務。違反は assert で検出）
     * @note 失敗時は count() を進めない。
     */
-   [[nodiscard]] auto read_into(std::span<std::byte> dst) -> result_type<void> {
+   [[nodiscard]] auto read_into(std::size_t size, std::span<std::byte> dst)
+       -> result_type<void> {
       auto result = _src->read_into(
           region{
               .offset = _count,
-              .size = dst.size(),
+              .size = size,
           },
           dst);
       if (result) [[likely]] {
-         _count += dst.size();
+         _count += size;
          return {};
       }
       return convert_from_data_source_result_error_type(result);

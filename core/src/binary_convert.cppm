@@ -137,31 +137,6 @@ constexpr auto fix_endian(std::span<T, Extent> values) noexcept -> void {
    }
 }
 
-// sequential_source が read_into(span) を持つ場合のみ、確保を伴わずに読む。
-template <class Src>
-concept sequential_read_into =
-    requires(Src &src, std::span<std::byte> dst) {
-       { src.read_into(dst) } -> std::same_as<sequential_source_result<void>>;
-    };
-
-// dst.size() バイトを読む。read_into があれば使い、無ければ read() を経由する。
-template <sequential_source Src>
-[[nodiscard]] auto read_exact(Src &src, std::span<std::byte> dst)
-    -> sequential_source_result<void> {
-   if constexpr (sequential_read_into<Src>) {
-      return src.read_into(dst);
-   } else {
-      auto bytes = src.read(dst.size());
-      if (!bytes) {
-         return std::unexpected(std::move(bytes).error());
-      }
-      assert(bytes->size == dst.size() &&
-             "sequential_source::read() violated its no-short-read contract.");
-      std::memcpy(dst.data(), bytes->value.get(), dst.size());
-      return {};
-   }
-}
-
 } // namespace binary_convert_detail
 
 // 単一値読み込み。
@@ -190,8 +165,8 @@ static_assert(
 export template <endian Endian, numberable T, sequential_source Src>
 [[nodiscard]] auto read_value(Src &src) -> sequential_source_result<T> {
    T value{};
-   if (auto result = binary_convert_detail::read_exact(
-           src, std::as_writable_bytes(std::span<T, 1>(&value, 1)));
+   if (auto result = src.read_into(
+           sizeof(T), std::as_writable_bytes(std::span<T, 1>(&value, 1)));
        !result) {
       return std::unexpected(std::move(result).error());
    }
@@ -265,8 +240,9 @@ export template <endian Endian, numberable T, std::size_t Size,
 [[nodiscard]] auto read_array(Src &src)
     -> sequential_source_result<std::array<T, Size>> {
    std::array<T, Size> ret_value{};
-   if (auto result = binary_convert_detail::read_exact(
-           src, std::as_writable_bytes(std::span<T, Size>(ret_value)));
+   if (auto result = src.read_into(
+           sizeof(T) * Size,
+           std::as_writable_bytes(std::span<T, Size>(ret_value)));
        !result) {
       return std::unexpected(std::move(result).error());
    }

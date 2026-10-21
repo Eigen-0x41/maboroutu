@@ -36,9 +36,11 @@ export template <class T>
 using sequential_source_result = result<T, errc::sequential_source>;
 
 export template <class T>
-concept sequential_source = requires(T &src, std::size_t n) {
+concept sequential_source =
+    requires(T &src, std::size_t n, std::span<std::byte> dst) {
    { src.count() } -> std::same_as<std::size_t>;
    { src.read(n) } -> std::same_as<sequential_source_result<byte_array>>;
+   { src.read_into(n, dst) } -> std::same_as<sequential_source_result<void>>;
 };
 
 // write()はread()と同一のcount()を共有する（読み書きどちらが成功しても
@@ -55,6 +57,8 @@ export class writable_sequential_source_handle {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(std::size_t)
           -> sequential_source_result<byte_array> = 0;
+      [[nodiscard]] virtual auto read_into(std::size_t, std::span<std::byte>)
+          -> sequential_source_result<void> = 0;
       [[nodiscard]] virtual auto write(std::span<std::byte const>)
           -> sequential_source_result<void> = 0;
       [[nodiscard]] virtual auto count() const -> std::size_t = 0;
@@ -68,6 +72,10 @@ export class writable_sequential_source_handle {
       [[nodiscard]] auto read(std::size_t size)
           -> sequential_source_result<byte_array> override {
          return value.read(size);
+      }
+      [[nodiscard]] auto read_into(std::size_t size, std::span<std::byte> dst)
+          -> sequential_source_result<void> override {
+         return value.read_into(size, dst);
       }
       [[nodiscard]] auto write(std::span<std::byte const> data)
           -> sequential_source_result<void> override {
@@ -100,6 +108,9 @@ export class writable_sequential_source_handle {
        : _value(std::make_unique<_model<T>>(std::move(value))) {}
 
    [[nodiscard]] auto read(std::size_t size) { return _value->read(size); }
+   [[nodiscard]] auto read_into(std::size_t size, std::span<std::byte> dst) {
+      return _value->read_into(size, dst);
+   }
    [[nodiscard]] auto write(std::span<std::byte const> data) {
       return _value->write(data);
    }
@@ -133,6 +144,8 @@ export class sequential_source_handle {
       virtual ~_concept() = default;
       [[nodiscard]] virtual auto read(std::size_t)
           -> sequential_source_result<byte_array> = 0;
+      [[nodiscard]] virtual auto read_into(std::size_t, std::span<std::byte>)
+          -> sequential_source_result<void> = 0;
       [[nodiscard]] virtual auto count() const -> std::size_t = 0;
       [[nodiscard]] virtual auto try_clone() const
           -> std::unique_ptr<_concept> = 0;
@@ -144,6 +157,10 @@ export class sequential_source_handle {
       [[nodiscard]] auto read(std::size_t size)
           -> sequential_source_result<byte_array> override {
          return value.read(size);
+      }
+      [[nodiscard]] auto read_into(std::size_t size, std::span<std::byte> dst)
+          -> sequential_source_result<void> override {
+         return value.read_into(size, dst);
       }
       [[nodiscard]] auto count() const -> std::size_t override {
          return value.count();
@@ -177,6 +194,9 @@ export class sequential_source_handle {
        : _value(std::make_unique<_model<T>>(std::move(value))) {}
 
    [[nodiscard]] auto read(std::size_t size) { return _value->read(size); }
+   [[nodiscard]] auto read_into(std::size_t size, std::span<std::byte> dst) {
+      return _value->read_into(size, dst);
+   }
    [[nodiscard]] auto count() const { return _value->count(); }
 
    [[nodiscard]] auto try_copy(this sequential_source_handle const &self)
@@ -212,6 +232,13 @@ export struct null_sequential_source {
           .size = 0,
       };
    }
+   [[nodiscard]] static auto read_into(std::size_t size, std::span<std::byte>)
+       -> sequential_source_result<void> {
+      if (size != 0) [[unlikely]] {
+         return make_unexpected(errc::sequential_source::out_of_range);
+      }
+      return {};
+   }
 };
 static_assert(sequential_source<null_sequential_source>, "");
 static_assert(!writable_sequential_source<null_sequential_source>, "");
@@ -236,6 +263,14 @@ export struct null_writable_sequential_source {
           .value = std::make_unique<byte_array::value_type>(0),
           .size = 0,
       };
+   }
+   [[nodiscard]] static auto read_into(std::size_t size,
+                                       std::span<std::byte>) noexcept
+       -> sequential_source_result<void> {
+      if (size != 0) [[unlikely]] {
+         return make_unexpected(errc::sequential_source::out_of_range);
+      }
+      return {};
    }
    [[nodiscard]] static auto
    write(std::span<std::byte const> /*unused*/) noexcept
