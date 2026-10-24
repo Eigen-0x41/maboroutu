@@ -330,6 +330,26 @@ export template <class Code, class Detail = std::monostate,
 #endif
 
 /**
+ * @brief 致命的エラーの診断メッセージ。コンパイル時定数の文字列リテラルのみ
+ *        から構築できる。
+ *
+ * @note 例外が無効な場合に標準エラー出力へ書き込む内容を、固定の文字列に
+ *       限定するための型。実行時に組み立てた文字列や、外部入力に由来する
+ *       文字列は、`consteval`コンストラクタが受け付けず、コンパイルエラーになる。
+ */
+export class fatal_message {
+   char const *_text;
+
+ public:
+   template <std::size_t N>
+   consteval fatal_message(char const (&text)[N]) noexcept : _text(text) {}
+
+   [[nodiscard]] constexpr auto c_str() const noexcept -> char const * {
+      return _text;
+   }
+};
+
+/**
  * @brief 致命的エラーを報告する。
  *
  * 例外が有効な場合は`E(args...)`を送出する。無効な場合は`args`を使わずに
@@ -341,6 +361,8 @@ export template <class Code, class Detail = std::monostate,
  * 一切出力しない。
  */
 export template <class E, class... Args>
+   requires(!(sizeof...(Args) == 1 &&
+              (std::is_convertible_v<Args, fatal_message> || ...)))
 [[noreturn]] constexpr void enter_fatal(Args &&...args) {
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
    throw E(std::forward<Args>(args)...);
@@ -363,6 +385,41 @@ export template <class E, class... Args>
    std::terminate(); // <exception>
 #else
    std::abort(); // <cstdlib>
+#endif
+#endif
+}
+
+/**
+ * @brief 致命的エラーを、診断メッセージ付きで報告する。
+ *
+ * 例外が有効な場合は`E(message.c_str())`を送出する（メッセージ文字列は、
+ * 従来の`enter_fatal<E>("...")`と同一）。無効な場合は、診断表示が有効なら、
+ * 終了前に`message`（コンパイル時定数の文字列リテラル）を標準エラー出力へ
+ * 書き込み、プログラムを終了する。
+ */
+export template <class E>
+[[noreturn]] constexpr void enter_fatal(fatal_message message) {
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+   throw E(message.c_str());
+#else
+   (void)message;
+#if MABOROUTU_FATAL_DIAGNOSTICS_ENABLED
+   if !consteval {
+#if defined(MABOROUTU_FATAL_TO_TERMINATE)
+      std::fputs("maboroutu: fatal error (exceptions disabled): terminate: ",
+                 stderr);
+#else
+      std::fputs("maboroutu: fatal error (exceptions disabled): abort: ",
+                 stderr);
+#endif
+      std::fputs(message.c_str(), stderr);
+      std::fputs("\n", stderr);
+   }
+#endif
+#if defined(MABOROUTU_FATAL_TO_TERMINATE)
+   std::terminate();
+#else
+   std::abort();
 #endif
 #endif
 }
