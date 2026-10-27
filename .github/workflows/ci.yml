@@ -63,6 +63,16 @@ jobs:
          tests_repository: Eigen-0x41/maboroutu-tests
          tests_ref: main
 
+   # MSVC のコード解析（/analyze と C++ Core Check）。他のジョブとは別の
+   # チェックとして表示される。解析の対象はテストコードのみ。
+   msvc-analyze:
+      uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_msvc_analyze.yml@main
+      with:
+         library_repository: https://github.com/${{ github.repository }}.git
+         library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+         tests_repository: Eigen-0x41/maboroutu-tests
+         tests_ref: main
+
    # 静的解析（clang-tidy）。他のジョブとは別のチェックとして表示される。
    # 設定は .github/clang-tidy-ci.yml（誤動作・未定義動作・性能に直結する分類のみ）。
    # 開発環境向けの広範な設定（.clang-tidy）とは別で、検出は合否に影響する。

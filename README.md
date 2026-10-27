@@ -97,7 +97,7 @@ int main() {
 | マクロ | 内容 |
 |---|---|
 | `MABOROUTU_FATAL_TO_TERMINATE` | 定義すると、`std::abort` の代わりに `std::terminate` で終了する |
-| `MABOROUTU_FATAL_DIAGNOSTICS` | `0`/`1`。終了前に、固定の診断文字列を標準エラーへ出力する。未定義の場合は、`NDEBUG` 未定義のとき `1`、定義済みのとき `0` |
+| `MABOROUTU_FATAL_DIAGNOSTICS` | `0`/`1`。終了前に、固定の診断文字列（`enter_fatal` にコンパイル時定数のメッセージを渡した場合は、そのメッセージを含む）を標準エラーへ出力する。未定義の場合は、`NDEBUG` 未定義のとき `1`、定義済みのとき `0` |
 
 ## モジュール一覧
 
@@ -122,7 +122,8 @@ int main() {
 ## テストと CI
 
 - テストは [maboroutu-tests](https://github.com/Eigen-0x41/maboroutu-tests) にある。
-- GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）で、Clang・MSVC・サニタイザ（ASan + UBSan）のテスト、clang-tidy による静的解析、`examples/` のビルドを実行する。
+- 読み取った値やエラーを print debug するための整形は、[maboroutu-appkit](https://github.com/Eigen-0x41/maboroutu-appkit) の `maboroutu.result_format` にある。本体は、標準出力・標準エラー出力へ書き込まない（`enter_fatal` の診断表示を除く）。
+- GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）で、Clang・MSVC・サニタイザ（ASan + UBSan）のテスト、MSVC のコード解析（`/analyze`、C++ Core Check）、clang-tidy による静的解析、`examples/` のビルドを実行する。
 
 ## LLM の利用について
 
