@@ -15,6 +15,12 @@ on:
    pull_request:
       branches: [main]
    workflow_dispatch:
+      inputs:
+         analysis:
+            description: "Run the optional code analysis jobs (msvc-analyze, clang-lifetime)"
+            required: false
+            type: boolean
+            default: false
 
 concurrency:
    group: ${{ github.workflow }}-${{ github.ref }}
@@ -63,10 +69,22 @@ jobs:
          tests_repository: Eigen-0x41/maboroutu-tests
          tests_ref: main
 
-   # MSVC のコード解析（/analyze と C++ Core Check）。他のジョブとは別の
-   # チェックとして表示される。解析の対象はテストコードのみ。
+   # MSVC のコード解析（/analyze と C++ Core Check）。手動実行（workflow_dispatch）で
+   # analysis を有効にした場合のみ実行する。
    msvc-analyze:
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.analysis }}
       uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_msvc_analyze.yml@main
+      with:
+         library_repository: https://github.com/${{ github.repository }}.git
+         library_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+         tests_repository: Eigen-0x41/maboroutu-tests
+         tests_ref: main
+
+   # Clang のライフタイム解析（-Wlifetime-safety-permissive）。手動実行
+   # （workflow_dispatch）で analysis を有効にした場合のみ実行する。
+   clang-lifetime:
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.analysis }}
+      uses: Eigen-0x41/maboroutu-tests/.github/workflows/impl_clang_lifetime.yml@main
       with:
          library_repository: https://github.com/${{ github.repository }}.git
          library_ref: ${{ github.event.pull_request.head.sha || github.sha }}

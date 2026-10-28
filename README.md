@@ -123,7 +123,7 @@ int main() {
 
 - テストは [maboroutu-tests](https://github.com/Eigen-0x41/maboroutu-tests) にある。
 - 読み取った値やエラーを print debug するための整形は、[maboroutu-appkit](https://github.com/Eigen-0x41/maboroutu-appkit) の `maboroutu.result_format` にある。本体は、標準出力・標準エラー出力へ書き込まない（`enter_fatal` の診断表示を除く）。
-- GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）で、Clang・MSVC・サニタイザ（ASan + UBSan）のテスト、MSVC のコード解析（`/analyze`、C++ Core Check）、clang-tidy による静的解析、`examples/` のビルドを実行する。
+- GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）で、Clang・MSVC・サニタイザ（ASan + UBSan）のテスト、clang-tidy による静的解析、`examples/` のビルドを実行する。MSVC のコード解析（`/analyze`、C++ Core Check）と Clang のライフタイム解析は、手動実行（`analysis` を有効にした `workflow_dispatch`）でのみ実行する。
 
 ## LLM の利用について
 
