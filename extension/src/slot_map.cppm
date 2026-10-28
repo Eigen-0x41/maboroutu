@@ -3,13 +3,9 @@
  * @brief 安定ハンドル（インデックス）付きフリーリスト型コンテナ
  * `basic_slot_map` の実装。
  *
- * @note
- * 本ファイルのDoxygenコメントは、library_spec_v1_16.md 4.6節（mylib.slot_map）
- *       および既存のインラインコメント・実装内容を基に付与したものであり、
- *       コードの実行時挙動そのものは変更していない（コメント追加のみ）。
  * @warning 本実装は世代（generation）カウンタを持たない。ハンドルの無効化検出が
  *          必要な場合は、値型 `T` 自体をポインタ的な型（例:
- * `std::shared_ptr`）に することを想定する（仕様書4.6節）。
+ * `std::shared_ptr`）にすることを想定する。
  */
 module;
 #include <array>
@@ -314,11 +310,10 @@ concept can_emplace_back = requires(T &self, Link &&link, Args &&...args) {
  *
  * @warning
  * 世代（generation）カウンタを持たない実装であるため、erase()後に再利用された
- *          スロットへ古いハンドルでアクセスした場合の無効化検出はできない
- *          （仕様書4.6節「位置づけ（重要な設計上の注記）」参照）。
+ *          スロットへ古いハンドルでアクセスした場合の無効化検出はできない。
  * @note `get_if` は `std::variant::get_if`
  * の前例に倣い自由関数として提供する （メンバ関数 `extension_store::get_if`
- * とは異なる設計判断。仕様書1.5節参照）。
+ * とは異なる設計判断）。
  */
 // [[basic_slot_map]]
 export template <class IndexT, class T, class MakeContainerT>
@@ -1020,14 +1015,9 @@ export template <class IndexT, class T, size_t SizeV>
 using inplace_slot_map = basic_slot_map<IndexT, T, make_array<SizeV>>;
 
 //------------------------------------------------------------------------------
-// NOTE(衛生改善): iterator/const_iterator の concept 充足検証。
-// data_source/reader/writer 等について
-// static_assert(concept_name<T>);
-// 形式でのコンパイル時検証を方針としているが、 従来 slot_map
-// のイテレータにはこの種の検証が存在しなかった。
-// 検証専用のダミー型（非export、slot_map_iterator_check_index）を用意し、
-// null_data_source（data_source.cppm）等と同様の「concept検証専用スタブ」
-// パターンに揃える。
+// iterator/const_iterator の concept 充足検証。
+// 検証専用のダミー型（非export、slot_map_iterator_check_index）を用い、
+// null_data_source（data_source.cppm）等と同様に static_assert で検証する。
 enum class slot_map_iterator_check_index : std::size_t {};
 using slot_map_iterator_check = slot_map<slot_map_iterator_check_index, int>;
 

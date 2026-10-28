@@ -253,11 +253,6 @@ using error = basic_error<Code, error_detail<Detail, DetailDeleter>>;
  * @brief error<Code, Detail, DetailDeleter> をエラー型とする
  * std::expected の結果型エイリアス。
  *
- * NOTE(v1.30案): result_traits（および value_type_with_extra による
- * std::variant 経由の複数モジュールエラー合成）は、現時点で利用実績が
- * ないため廃止した。複数モジュールをまたぐエラー合成が必要になった場合は
- * 別途改めて設計する（ライブラリ全体に影響するスコープのため一旦保留）。
- *
  * @tparam T 成功時の値型（std::expected の第1テンプレート引数）
  * @tparam Code エラー表現用のenum型
  * @tparam Detail エラー説明用の型

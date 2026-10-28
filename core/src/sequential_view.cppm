@@ -16,11 +16,8 @@ namespace maboroutu {
 // data_source を非所有で参照し、これまでに成功した読み書きの累積バイト数
 // (_count) のみを状態として保持する薄いビュー。
 //
-// NOTE: 現状は data_source concept（ランダムアクセス前提）を土台とする
-// ため、任意offsetへの seek() は意図的に公開しない。将来、真にフォワード
-// オンリーな入力（例: 非シーク可能なストリーム）向けの別concept
-// を導入する場合にも、このインターフェース（一方向にのみ前進する）のまま
-// 矛盾なく拡張できることを意図した設計。
+// NOTE: data_source concept（ランダムアクセス前提）を土台とするため、
+// 任意offsetへの seek() は意図的に公開しない（一方向にのみ前進する）。
 export template <data_source DataSource>
 // [[sequential_view]]
 class sequential_view {
@@ -115,7 +112,7 @@ class sequential_view {
       return self.convert_from_data_source_result_error_type(result);
    }
 
-   // NOTE: オプション実装
+   // 読み書きを伴わずに、累積バイト数のみを進める。
    template <class Self>
    auto skip(this Self &self, std::size_t n) noexcept -> void {
       self._count += n;

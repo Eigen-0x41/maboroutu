@@ -26,7 +26,7 @@ static_assert(
     "are NOT part of any standardized freestanding library subset as of "
     "this writing (no __cpp_lib_freestanding_iostream feature test macro "
     "exists). This module is therefore disabled by default under "
-    "freestanding implementations, unlike maboroutu.error's guard (v1.28), "
+    "freestanding implementations, unlike maboroutu.error's guard, "
     "which checks feature-test macros that DO exist for <expected>/"
     "<variant>/<memory>. "
     "If your freestanding implementation happens to provide a conforming "
@@ -34,8 +34,7 @@ static_assert(
     "MABOROUTU_STREAM_DATA_SOURCE_ALLOW_FREESTANDING before importing this "
     "module to explicitly acknowledge that this is unverified by the "
     "standard, and proceed at your own risk. Actual runtime conformance "
-    "is the responsibility of the library user (see library_spec.md 3章 "
-    "freestanding guard policy).");
+    "is the responsibility of the library user.");
 #else
 
 export import maboroutu.data_source;
@@ -79,8 +78,7 @@ class stream_data_source {
                      static_cast<std::streamsize>(reg.size));
       // NOTE: 指定サイズを読み込む前にEOFに達した場合はfailとなる。
       if (self.data.fail()) [[unlikely]] {
-         // NOTE: 仕様によるとbadbitになることは無いらしい。
-         //       ただし、fail()がbadbitも検出するためその回避。
+         // NOTE: fail()はbadbitも検出するため、badbitを先に判別する。
          if (self.data.bad()) [[unlikely]] {
             return make_unexpected(errc_type::invalid_member_variable);
          }
@@ -206,8 +204,8 @@ class stream_data_source {
     * この関数の場合、
     * サイズを取得した際後のポジションは先頭となる。
     *
-    * @tparam Self [TODO:tparam]
-    * @return [TODO:return]
+    * @tparam Self 呼び出し元のオブジェクト型（deducing this）。
+    * @return ストリームのバイト数。失敗した場合はエラー。
     */
    template <class Self>
    [[nodiscard]] auto size(this Self &self) -> result_type<std::size_t> {

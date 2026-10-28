@@ -18,7 +18,7 @@ namespace maboroutu {
  * @brief ハンドルベースの遅延解決（tier c）。参照先オブジェクトが、
  *        参照元とは独立した文脈で後から構築される場合に使う。
  *
- * @note 分類は以下の3段階（application_spec.md 検討時）:
+ * @note 前方参照の解決は以下の3段階に分類する:
  *       (a) 即時解決 - offset_ref 自体が不要。
  *       (b) スコープ完結型パッチ - position_patch/reserve_patch（RAII）。
  *       (c) ハンドルベース遅延解決 - 本クラス。

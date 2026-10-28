@@ -129,9 +129,8 @@ export class memory_data_buffer {
    /**
     * @brief region で指定した範囲を読み取る。
     *
-    * @note data_source の短縮読み込み契約（library_spec.md v1.17）に従い、
-    *       range が現在のサイズを超える場合は部分的なバイト列を返さず
-    *       out_of_range を返す。
+    * @note data_source の no-short-read 契約に従い、range が現在のサイズを
+    *       超える場合は部分的なバイト列を返さず out_of_range を返す。
     */
    [[nodiscard]] auto read(this self_type const &self, region reg)
        -> data_source_result<byte_array> {
@@ -151,8 +150,8 @@ export class memory_data_buffer {
     * @brief region で指定した範囲を dst の先頭へ読み取る。
     *
     * @pre dst.size() >= reg.size（呼び出し側の責務。不一致時はUB）
-    * @note 短縮読み込み契約（v1.17）に従い、range が現在のサイズを超える
-    *       場合は out_of_range を返す。この場合 dst は変更しない。
+    * @note no-short-read 契約に従い、range が現在のサイズを超える場合は
+    *       out_of_range を返す。この場合 dst は変更しない。
     */
    [[nodiscard]] auto read_into(this self_type const &self, region reg,
                                 std::span<std::byte> dst)
@@ -169,9 +168,8 @@ export class memory_data_buffer {
    /**
     * @brief region で指定した範囲へ書き込む。
     *
-    * @note range が現在のサイズを超える場合の挙動は実装定義
-    *       （library_spec.md 4.3節）。本実装は自動的に拡張するため、
-    *       アロケーション失敗を除き失敗しない。
+    * @note range が現在のサイズを超える場合の挙動は実装定義。本実装は
+    *       自動的に拡張するため、アロケーション失敗を除き失敗しない。
     * @pre data.size() == r.size（呼び出し側の責務。不一致時はUB）
     * @note offset + size が size_t を超える場合は out_of_range を返し、
     *       バッファは変更しない。

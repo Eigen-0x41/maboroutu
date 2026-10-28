@@ -43,8 +43,8 @@ using uint_storage_t = typename uint_storage<Bytes>::type;
  *
  * @note FLACの24bit長フィールド等、numberable（binary_convert、
  *       sizeof(T)固定）の枠に収まらない幅を表現するためのプリミティブ。
- *       data_source::read()の短縮読み込み契約（v1.17）に従い、範囲外は
- *       out_of_range として伝播する。
+ *       data_source の no-short-read 契約に従い、範囲外は out_of_range として
+ *       伝播する。
  */
 export template <std::size_t Bytes, endian Endian, data_source Src>
 [[nodiscard]] auto read_uint(Src &src, std::size_t offset)
@@ -106,8 +106,7 @@ export template <std::size_t Bytes, endian Endian, writable_data_source Src>
  *        （パッチ）するためのRAIIハンドル。
  *
  * @note バイトオフセットへの参照・テーブルインデックスへの参照のいずれ
- *       にも使える（値の意味は呼び出し側が決める。application_spec.md
- *       検討時の分類 (b)/(c) 双方の下位機構として共用する）。
+ *       にも使える（値の意味は呼び出し側が決める）。
  * @note スコープを抜けるまでに resolve()（または明示的に abandon()）を
  *       呼ばなければ、デストラクタで assert により検出する（呼び忘れは
  *       バグとして扱う。7章 (b) スコープ完結型パッチの設計）。
