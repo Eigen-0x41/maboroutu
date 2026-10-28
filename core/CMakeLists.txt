@@ -23,7 +23,7 @@ if(NOT WORKSPACE_NAME)
   message(FATAL_ERROR "WORKSPACE_NAME must be set.")
 endif()
 project(${WORKSPACE_NAME}_${PROJECT_COMPONENT}
-    VERSION 0.0.3.7
+    VERSION 1.0.0.0
     # COMPAT_VERSION 0.0.0.0
     # SPDX_LICENSE  MIT
     DESCRIPTION "Core modules of maboroutu: error handling, data source and buffer abstractions, binary conversion and layout."
@@ -97,7 +97,7 @@ include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
     VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMinorVersion)
+    COMPATIBILITY SameMajorVersion)
 file(WRITE
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cmake.in
   "@PACKAGE_INIT@\n"
