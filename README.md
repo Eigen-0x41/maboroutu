@@ -10,12 +10,12 @@
 | ターゲット | 内容 |
 |---|---|
 | `maboroutu::core` | エラー型・結果型、データソース／バッファ／シーケンシャルソースの抽象、数値変換、バイナリレイアウト補助 など |
-| `maboroutu::extension` | `core` の具体実装・補助コンテナ（`memory_data_buffer`、`stream_data_source`、`slot_map` など）。`core` に依存する |
+| `maboroutu::extension` | `core` の具体実装・補助コンテナ（`memory_data_buffer`、`stream_data_source`、`file_data_source`、`slot_map` など）。`core` に依存する |
 
 関連するリポジトリ:
 
 - [maboroutu-tests](https://github.com/Eigen-0x41/maboroutu-tests): 本ライブラリのテスト（GoogleTest）と、CI から呼び出す検証ワークフロー。
-- [maboroutu-appkit](https://github.com/Eigen-0x41/maboroutu-appkit): 実行ファイルの入口側の補助部品（コマンドライン引数の振り分け、`std::source_location` の整形）。かつては本ライブラリに含まれていた。
+- [maboroutu-appkit](https://github.com/Eigen-0x41/maboroutu-appkit): 実行ファイルの入口側の補助部品（コマンドライン引数の振り分け、`std::source_location` の整形、診断出力の整形、編集操作の基底型 `command`）。かつては本ライブラリに含まれていた。
 
 ## 要件
 
@@ -115,6 +115,7 @@ int main() {
 | `maboroutu.extension_store` | core | enum と型の対応付けによる拡張機構 |
 | `maboroutu.memory_data_buffer` | extension | メモリ上のバイト列を保持する `data_buffer` の実装 |
 | `maboroutu.stream_data_source` | extension | `std::istream` / `std::iostream` を `data_source` として扱う実装 |
+| `maboroutu.file_data_source` | extension | ファイルを `std::filesystem::path` から開き、`data_source` / `writable_data_source` として扱う `std::FILE` ベースの実装（`file_data_source`、`file_writable_data_source`） |
 | `maboroutu.binary_layout_handle` | extension | ハンドルによる遅延解決（`deferred_resolver`） |
 | `maboroutu.slot_map` | extension | 安定したハンドル（インデックス）を持つフリーリスト型のコンテナ |
 | `maboroutu.keyed_slot_map` | extension | 任意のキーから `slot_map` の要素へ振り分けるラッパー |
