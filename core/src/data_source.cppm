@@ -64,8 +64,7 @@ export class writable_data_source_handle {
       [[nodiscard]] virtual auto write(region r,
                                        std::span<std::byte const> data)
           -> data_source_result<void> = 0;
-      [[nodiscard]] virtual auto size() const
-          -> data_source_result<std::size_t> = 0;
+      [[nodiscard]] virtual auto size() -> data_source_result<std::size_t> = 0;
       [[nodiscard]] virtual auto try_clone() const
           -> std::unique_ptr<_concept> = 0;
    };
@@ -85,8 +84,7 @@ export class writable_data_source_handle {
           -> data_source_result<void> override {
          return value.write(r, data);
       }
-      [[nodiscard]] auto size() const
-          -> data_source_result<std::size_t> override {
+      [[nodiscard]] auto size() -> data_source_result<std::size_t> override {
          return value.size();
       }
       [[nodiscard]] auto try_clone() const
@@ -121,7 +119,7 @@ export class writable_data_source_handle {
    [[nodiscard]] auto write(region r, std::span<std::byte const> data) {
       return _value->write(r, data);
    }
-   [[nodiscard]] auto size() const { return _value->size(); }
+   [[nodiscard]] auto size() { return _value->size(); }
 
    [[nodiscard]] auto try_copy(this writable_data_source_handle const &self)
        -> std::optional<writable_data_source_handle> {
@@ -147,8 +145,7 @@ export class data_source_handle {
           -> data_source_result<byte_array> = 0;
       [[nodiscard]] virtual auto read_into(region r, std::span<std::byte> dst)
           -> data_source_result<void> = 0;
-      [[nodiscard]] virtual auto size() const
-          -> data_source_result<std::size_t> = 0;
+      [[nodiscard]] virtual auto size() -> data_source_result<std::size_t> = 0;
       [[nodiscard]] virtual auto try_clone() const
           -> std::unique_ptr<_concept> = 0;
    };
@@ -164,8 +161,7 @@ export class data_source_handle {
           -> data_source_result<void> override {
          return value.read_into(r, dst);
       }
-      [[nodiscard]] auto size() const
-          -> data_source_result<std::size_t> override {
+      [[nodiscard]] auto size() -> data_source_result<std::size_t> override {
          return value.size();
       }
       [[nodiscard]] auto try_clone() const
@@ -198,7 +194,7 @@ export class data_source_handle {
    [[nodiscard]] auto read_into(region r, std::span<std::byte> dst) {
       return _value->read_into(r, dst);
    }
-   [[nodiscard]] auto size() const { return _value->size(); }
+   [[nodiscard]] auto size() { return _value->size(); }
 
    [[nodiscard]] auto try_copy(this data_source_handle const &self)
        -> std::optional<data_source_handle> {
