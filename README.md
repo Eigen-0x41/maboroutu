@@ -81,6 +81,8 @@ int main() {
 | [`binary_roundtrip.cpp`](examples/binary_roundtrip.cpp) | 数値（整数・浮動小数点・配列）の書き込みと読み戻し |
 | [`length_prefixed_patch.cpp`](examples/length_prefixed_patch.cpp) | 本体を書いた後で、先頭の長さフィールドを書き戻す |
 | [`error_handling.cpp`](examples/error_handling.cpp) | 結果型・エラーコード・エラーメッセージ |
+| [`file_write.cpp`](examples/file_write.cpp) | ファイルへ、木構造（`sequential_view`）と、オフセットの表（`deferred_resolver`による前方参照の解決）を書く。バイナリの配置を、冒頭のコメントに記載 |
+| [`file_read.cpp`](examples/file_read.cpp) | `file_write` が書いたファイルを、木構造（`sequential_view`で順に読む）と、オフセットの参照（`data_source`で位置を指定して読む）で読む |
 
 ### エラー処理の方針
 
