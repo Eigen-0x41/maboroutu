@@ -48,6 +48,14 @@ class sequential_view {
       default:
          break;
       }
+      // 確保の失敗は、オブジェクトの状態の異常ではないため、一般的な失敗へ
+      // 変換する（invalid_member_variable は、状態の異常を意味する）。
+      if constexpr (requires { code_type::allocation_failure; }) {
+         if (code == code_type::allocation_failure) {
+            return make_unexpected(
+                result_type<void>::error_type::code_type::operation_failure);
+         }
+      }
       return make_unexpected(
           result_type<void>::error_type::code_type::invalid_member_variable);
    }

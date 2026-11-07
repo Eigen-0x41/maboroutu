@@ -336,6 +336,7 @@ export enum class data_buffer {
    out_of_range,
    operation_failure,
    invalid_operation,
+   allocation_failure,
 };
 
 export constexpr auto error_message(data_buffer code) noexcept
@@ -347,6 +348,8 @@ export constexpr auto error_message(data_buffer code) noexcept
       return "data_buffer: operation failed";
    case data_buffer::invalid_operation:
       return "data_buffer: invalid operation";
+   case data_buffer::allocation_failure:
+      return "data_buffer: memory allocation failed";
    }
    return "unknown error";
 }

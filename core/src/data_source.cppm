@@ -19,6 +19,7 @@ export enum class data_source {
    invalid_member_variable,
    invalid_operation,
    operation_failure,
+   allocation_failure,
 };
 
 export constexpr auto error_message(data_source code) noexcept
@@ -32,6 +33,8 @@ export constexpr auto error_message(data_source code) noexcept
       return "data_source: invalid operation";
    case data_source::operation_failure:
       return "data_source: operation failed";
+   case data_source::allocation_failure:
+      return "data_source: memory allocation failed";
    }
    return "unknown error";
 }

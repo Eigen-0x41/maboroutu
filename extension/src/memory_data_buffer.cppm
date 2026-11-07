@@ -28,8 +28,10 @@ constexpr std::size_t table_block_size =
  * @brief std::vector<std::byte> をバックエンドに持つ、data_buffer 準拠の
  *        メモリ上バイトバッファ。
  *
- * @note write()/append()/grow() による拡張はアロケーション失敗（bad_alloc）
- *       を除き失敗しない。
+ * @note write()/append()/grow() による拡張は、アロケーションに失敗した場合に
+ *       allocation_failure を返し、バッファを変更しない（例外が有効な場合。
+ *       無効な場合は、STL と同様にプログラムが終了する）。
+ * @note 現在の大きさを超える write() は、その間の区間を0で埋める。
  */
 export class memory_data_buffer {
    static_assert(std::has_single_bit(table_block_size<std::byte>), "");
@@ -73,15 +75,55 @@ export class memory_data_buffer {
                          (std::tuple_size_v<unit_type> - 1);
    }
 
-   void _resize(std::size_t size) {
+   /**
+    * @brief ユニットを required_units 個になるまで追加する（強い保証）。
+    *
+    * 追加するユニットは値初期化（0埋め）される。
+    *
+    * @return 成功した場合は true。アロケーションに失敗した場合は、追加した分を
+    *         巻き戻して false を返し、状態を変更しない。例外が無効な場合は、
+    *         失敗時にプログラムが終了する。
+    * @note 例外の捕捉は invoke_or_recover（4.10.2節）に集約している。
+    *       ここで送出され得る例外は、確保の失敗（bad_alloc・length_error）
+    *       のみである。
+    */
+   [[nodiscard]] auto _grow_units(std::size_t required_units) -> bool {
+      std::size_t added = 0;
+      return invoke_or_recover(
+          [&]() -> bool {
+             // 先に確保する。ここで失敗しても、何も変更されない。
+             // 以降の _data.emplace_back は、再確保が起きず、例外を送出しない。
+             _data.reserve(required_units);
+             while (_data.size() < required_units) {
+                _unit_manager.push_front({});
+                _data.emplace_back(_unit_manager.front());
+                ++added;
+             }
+             return true;
+          },
+          [&]() -> bool {
+             for (; added > 0; --added) {
+                _data.pop_back();
+                _unit_manager.pop_front();
+             }
+             return false;
+          });
+   }
+
+   /**
+    * @brief 大きさを size に変更する。
+    *
+    * @return 成功した場合は true。アロケーションに失敗した場合は false を返し、
+    *         バッファを変更しない。例外が無効な場合は、失敗時にプログラムが
+    *         終了する。
+    */
+   [[nodiscard]] auto _resize(std::size_t size) -> bool {
       auto const required_size = (size + std::tuple_size_v<unit_type> - 1) /
                                  std::tuple_size_v<unit_type>;
       auto const cmp = required_size <=> _data.size();
       if (cmp > 0) {
-         auto const diff = required_size - _data.size();
-         for (std::size_t i = 0; i < diff; i++) {
-            _unit_manager.push_front({});
-            _data.emplace_back(_unit_manager.front());
+         if (!_grow_units(required_size)) {
+            return false;
          }
       } else if (cmp < 0) {
          auto const diff = _data.size() - required_size;
@@ -92,6 +134,7 @@ export class memory_data_buffer {
          }
       }
       _size = size;
+      return true;
    }
 
  public:
@@ -187,7 +230,9 @@ export class memory_data_buffer {
          if (!_can_resize(required_end)) [[unlikely]] {
             return make_unexpected(source_errc_type::out_of_range);
          }
-         self._resize(required_end);
+         if (!self._resize(required_end)) [[unlikely]] {
+            return make_unexpected(source_errc_type::allocation_failure);
+         }
       }
       view_type view(self._data, reg);
       std::ranges::copy(data, view.begin());
@@ -214,7 +259,9 @@ export class memory_data_buffer {
           .size = data.size(),
       };
 
-      self._resize(self._size + data.size());
+      if (!self._resize(self._size + data.size())) [[unlikely]] {
+         return make_unexpected(buffer_errc_type::allocation_failure);
+      }
       view_type view(self._data, result);
       std::ranges::copy(data, view.begin());
 
@@ -236,7 +283,9 @@ export class memory_data_buffer {
          return make_unexpected(buffer_errc_type::out_of_range);
       }
       auto const offset = self._size;
-      self._resize(self._size + n);
+      if (!self._resize(self._size + n)) [[unlikely]] {
+         return make_unexpected(buffer_errc_type::allocation_failure);
+      }
       return region{
           .offset = offset,
           .size = n,
@@ -262,9 +311,10 @@ export class memory_data_buffer {
       if (this == &value) [[unlikely]] {
          return *this;
       }
-      _resize(value._size);
-      std::ranges::copy(value._unit_manager, _unit_manager.begin());
-      return *this;
+      // 複製してから移動する。確保に失敗した場合は、例外を送出し、*this を
+      // 変更しない（強い保証）。
+      memory_data_buffer copy(value);
+      return *this = std::move(copy);
    }
    auto operator=(memory_data_buffer &&other) noexcept -> memory_data_buffer & {
       if (this != &other) {
