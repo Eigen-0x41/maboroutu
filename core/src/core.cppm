@@ -11,8 +11,9 @@ static_assert(__clang_major__ >= 18, "maboroutu requires Clang 18+");
 #elif defined(__GNUC__)
 static_assert(__GNUC__ >= 15, "maboroutu requires GCC 15+");
 #elif defined(_MSC_VER)
-static_assert(_MSC_VER >= 1944,
-              "maboroutu requires MSVC Build Tools 14.44+ (Visual Studio 2022)");
+static_assert(
+    _MSC_VER >= 1944,
+    "maboroutu requires MSVC Build Tools 14.44+ (Visual Studio 2022)");
 #endif
 
 namespace maboroutu {
@@ -27,8 +28,10 @@ export constexpr std::size_t recommended_alignment =
     ;
 
 export template <typename T> struct basic_region {
-   T offset;
-   T size;
+   using value_type = T;
+
+   value_type offset;
+   value_type size;
 };
 
 export using region = basic_region<std::size_t>;
@@ -80,5 +83,11 @@ constexpr auto in_place_tag_v = in_place_tag<decltype(EnumV), EnumV>();
 
 export template <endian EndianV>
 using endian_in_place_tag = in_place_tag<endian, EndianV>;
+
+export template <class C, class T>
+struct copy_const
+    : public std::conditional<std::is_const_v<C>, std::add_const_t<T>, T> {};
+
+export template <class C, class T> using copy_const_t = copy_const<C, T>::type;
 
 } // namespace maboroutu

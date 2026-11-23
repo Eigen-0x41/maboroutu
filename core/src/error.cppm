@@ -2,7 +2,6 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>
-#include <exception>
 #include <expected>
 #include <memory>
 #include <string_view>
@@ -11,7 +10,7 @@ module;
 #include <variant>
 #include <version>
 export module maboroutu.error;
-export import maboroutu.core;
+import maboroutu.core;
 
 #if __STDC_HOSTED__ == 0
 #if !defined(__cpp_lib_freestanding_expected)
