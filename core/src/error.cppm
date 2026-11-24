@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>
+#include <exception> // NOTE: For std::terminate
 #include <expected>
 #include <memory>
 #include <string_view>
