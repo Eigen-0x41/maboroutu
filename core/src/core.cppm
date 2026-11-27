@@ -115,8 +115,9 @@ constexpr auto invoke_within_read_lock_or_directly(T &value, F &&func) noexcept(
 
 export template <class T, class F>
    requires write_lockable_with<T, F>
-constexpr auto invoke_within_write_lock_or_directly(T &value, F &&func) noexcept(
-    noexcept(value.write_lock(std::forward<F>(func))))
+constexpr auto invoke_within_write_lock_or_directly(
+    T &value,
+    F &&func) noexcept(noexcept(value.write_lock(std::forward<F>(func))))
     -> decltype(value.write_lock(std::forward<F>(func))) {
    return value.write_lock(std::forward<F>(func));
 }
