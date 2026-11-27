@@ -2,13 +2,15 @@ module;
 #include <bit>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <type_traits>
+#include <utility>
 export module maboroutu.core;
 
-#if defined(__clang__)
+#ifdef __clang__
 static_assert(__clang_major__ >= 18, "maboroutu requires Clang 18+");
-#elif defined(__GNUC__)
+#elifdef __GNUC__
 static_assert(__GNUC__ >= 15, "maboroutu requires GCC 15+");
 #elif defined(_MSC_VER)
 static_assert(
@@ -17,10 +19,10 @@ static_assert(
 #endif
 
 namespace maboroutu {
-export using endian = std::endian;
+export using std::endian;
 
 export constexpr std::size_t recommended_alignment =
-#if defined(__cpp_lib_hardware_interference_size)
+#ifdef __cpp_lib_hardware_interference_size
     std::hardware_destructive_interference_size
 #else
     64
@@ -87,7 +89,44 @@ using endian_in_place_tag = in_place_tag<endian, EndianV>;
 export template <class C, class T>
 struct copy_const
     : public std::conditional<std::is_const_v<C>, std::add_const_t<T>, T> {};
-
 export template <class C, class T> using copy_const_t = copy_const<C, T>::type;
+
+template <class T, class F>
+concept read_lockable_with =
+    requires(T &value, F &&func) { value.read_lock(std::forward<F>(func)); };
+template <class T, class F>
+concept write_lockable_with =
+    requires(T &value, F &&func) { value.write_lock(std::forward<F>(func)); };
+
+export template <class T, class F>
+   requires read_lockable_with<T, F>
+constexpr auto invoke_within_read_lock_or_directly(T &value, F &&func) noexcept(
+    noexcept(value.read_lock(std::forward<F>(func))))
+    -> decltype(value.read_lock(std::forward<F>(func))) {
+   return value.read_lock(std::forward<F>(func));
+}
+
+export template <class T, class F>
+   requires(!read_lockable_with<T, F>)
+constexpr auto invoke_within_read_lock_or_directly(T &value, F &&func) noexcept(
+    std::is_nothrow_invocable_v<F &&, T &>) -> std::invoke_result_t<F &&, T &> {
+   return std::invoke(std::forward<F>(func), value);
+}
+
+export template <class T, class F>
+   requires write_lockable_with<T, F>
+constexpr auto invoke_within_write_lock_or_directly(T &value, F &&func) noexcept(
+    noexcept(value.write_lock(std::forward<F>(func))))
+    -> decltype(value.write_lock(std::forward<F>(func))) {
+   return value.write_lock(std::forward<F>(func));
+}
+
+export template <class T, class F>
+   requires(!write_lockable_with<T, F> && !std::is_const_v<T>)
+constexpr auto invoke_within_write_lock_or_directly(
+    T &value, F &&func) noexcept(std::is_nothrow_invocable_v<F &&, T &>)
+    -> std::invoke_result_t<F &&, T &> {
+   return std::invoke(std::forward<F>(func), value);
+}
 
 } // namespace maboroutu
